@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <title>QB:LB パズル攻略ツール</title>
 <style>
 :root {
@@ -51,7 +51,7 @@ header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: f
   background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
   padding: 5px 8px;
 }
-.nav-btn { padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; cursor: pointer; flex-shrink: 0; }
+.nav-btn { padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; cursor: pointer; flex-shrink: 0; touch-action: manipulation; user-select: none; }
 .nav-btn:hover:not(:disabled) { border-color: #a78bfa; color: #a78bfa; }
 .nav-btn:disabled { opacity: .3; cursor: not-allowed; }
 .sol-label { font-size: 11px; color: var(--text2); flex: 1; text-align: center; }
@@ -72,6 +72,8 @@ header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: f
   display: flex; align-items: center; justify-content: center;
   font-size: 8px; font-weight: 700;
   background: var(--surface2);
+  /* デフォルトのマス目区切り線 */
+  box-shadow: inset -1px 0 0 var(--border), inset 0 -1px 0 var(--border);
 }
 
 /* ===== セクション ===== */
@@ -371,7 +373,15 @@ function updateBoardPreview(board, inventory, colorMap) {
     const right  = (c<4 && board[r][c+1]===pi) ? 'transparent' : 'rgba(0,0,0,0.7)';
     el.style.background = m.marble ? 'linear-gradient(135deg,#7c3aed88,#06b6d488)' : col+'55';
     el.style.color = col;
-    el.style.boxShadow = `inset 3px 0 0 ${left},inset -3px 0 0 ${right},inset 0 3px 0 ${top},inset 0 -3px 0 ${bottom}`;
+    // ピース境界は太め、マス目線は細く両立
+    el.style.boxShadow = [
+      `inset 3px 0 0 ${left}`,
+      `inset -3px 0 0 ${right}`,
+      `inset 0 3px 0 ${top}`,
+      `inset 0 -3px 0 ${bottom}`,
+      `inset -1px 0 0 rgba(0,0,0,0.25)`,
+      `inset 0 -1px 0 rgba(0,0,0,0.25)`
+    ].join(',');
     el.textContent = p.id;
   }
 }
@@ -379,7 +389,12 @@ function updateBoardPreview(board, inventory, colorMap) {
 function resetBoardPreview() {
   for (let i = 0; i < 25; i++) {
     const el = document.getElementById('bp-' + i);
-    if (el) { el.style.cssText = ''; el.textContent = ''; }
+    if (el) {
+      el.style.background = '';
+      el.style.color = '';
+      el.style.boxShadow = '';
+      el.textContent = '';
+    }
   }
 }
 
