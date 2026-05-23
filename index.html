@@ -152,7 +152,19 @@ header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: f
   <div class="board-wrap">
     <div class="result-overlay" id="result-overlay">
       <div class="result-stats" id="result-stats"></div>
-      <div class="sol-nav" id="sol-nav"></div>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+        <div class="sol-nav" id="sol-nav" style="flex:1;"></div>
+        <div style="display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:5px 8px;flex-shrink:0;">
+          <label for="stage-select" style="font-size:10px;color:var(--text2);white-space:nowrap;">段階</label>
+          <select id="stage-select" onchange="onStageChange(this.value)" style="background:var(--surface2);color:var(--text);border:1px solid var(--border2);border-radius:5px;font-size:12px;padding:2px 4px;cursor:pointer;">
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+          </select>
+        </div>
+      </div>
     </div>
     <div class="board-preview" id="board-preview"></div>
   </div>
@@ -200,12 +212,12 @@ header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: f
 <script>
 const RANKS = ['SS','S','A','B','C','D'];
 const RANK_META = {
-  SS:{color:'#a78bfa',color2:'#22d3ee',bg:'#2d1f5e',border:'#7c3aed',pt:128,marble:true},
-  S: {color:'#f87171',bg:'#3d1515',border:'#dc2626',pt:64},
-  A: {color:'#fb923c',bg:'#3d220a',border:'#ea580c',pt:32},
-  B: {color:'#c084fc',bg:'#2a1a50',border:'#9333ea',pt:16},
-  C: {color:'#60a5fa',bg:'#0f2040',border:'#2563eb',pt:8},
-  D: {color:'#4ade80',bg:'#0d2a18',border:'#16a34a',pt:4},
+  SS:{color:'#a78bfa',color2:'#22d3ee',bg:'#2d1f5e',border:'#7c3aed',basePt:32,marble:true},
+  S: {color:'#f87171',bg:'#3d1515',border:'#dc2626',basePt:16},
+  A: {color:'#fb923c',bg:'#3d220a',border:'#ea580c',basePt:8},
+  B: {color:'#c084fc',bg:'#2a1a50',border:'#9333ea',basePt:4},
+  C: {color:'#60a5fa',bg:'#0f2040',border:'#2563eb',basePt:2},
+  D: {color:'#4ade80',bg:'#0d2a18',border:'#16a34a',basePt:1},
 };
 const RANK_ORDER = {SS:0,S:1,A:2,B:3,C:4,D:5};
 
@@ -326,6 +338,10 @@ let quantities = {};
 ALL_PIECES.forEach(p => quantities[p.id] = 0);
 let solutions = [];
 let currentSolIdx = 0;
+let currentStage = 1; // 段階補正（1〜5）
+
+// 段階補正テーブル（段階1〜5の倍率）
+const STAGE_MULT = [1, 2, 3, 4, 5];
 
 // ===== ミニピース描画 =====
 function drawMini(cells, color, sz) {
@@ -516,13 +532,27 @@ function clearAll() {
   updateSummary();
   solutions = [];
   currentSolIdx = 0;
+  currentStage = 1;
+  const sel = document.getElementById('stage-select');
+  if (sel) sel.value = '1';
   document.getElementById('result-overlay').classList.remove('show');
   resetBoardPreview();
 }
 
+function onStageChange(val) {
+  currentStage = parseInt(val);
+  if (solutions.length) {
+    // インベントリを再構築してpt再計算・再描画
+    const inventory = [];
+    ALL_PIECES.forEach(p => { for (let i = 0; i < quantities[p.id]; i++) inventory.push(p); });
+    renderResults(inventory);
+  }
+}
+
 // ===== pt計算 =====
 function calcPt(sol, inventory) {
-  return [...new Set(sol.usedIdx)].reduce((s,pi) => s + RANK_META[inventory[pi].rank].pt, 0);
+  const mult = STAGE_MULT[currentStage - 1];
+  return [...new Set(sol.usedIdx)].reduce((s,pi) => s + RANK_META[inventory[pi].rank].basePt * mult, 0);
 }
 
 // ===== ソルバー =====
