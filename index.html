@@ -15,10 +15,9 @@
   --text2: #8888aa;
   --text3: #44445a;
   --radius: 8px;
-  --radius-lg: 12px;
 }
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { background: var(--bg); color: var(--text); font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; font-size: 14px; overscroll-behavior: none; }
+body { background: var(--bg); color: var(--text); font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; font-size: 14px; }
 
 header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: .5rem; }
 .logo { font-size: 15px; font-weight: 700; }
@@ -27,17 +26,41 @@ header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: f
 
 .page { display: flex; flex-direction: column; }
 
-/* ===== 盤面プレビュー ===== */
-.board-wrap {
-  padding: .75rem 1rem .5rem;
-  display: flex;
-  justify-content: center;
+/* ===== 結果オーバーレイ（盤面の上） ===== */
+.board-wrap { padding: .75rem 1rem .5rem; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+
+.result-overlay {
+  width: min(calc(100vw - 2rem), 50vh);
+  display: none;
 }
+.result-overlay.show { display: block; }
+
+.result-stats {
+  display: grid;
+  grid-template-columns: repeat(3,1fr);
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 8px; }
+.stat-label { font-size: 9px; text-transform: uppercase; letter-spacing: .05em; color: var(--text2); margin-bottom: 2px; }
+.stat-val { font-size: 17px; font-weight: 700; }
+.stat-val.perfect { background: linear-gradient(90deg,#7c3aed,#06b6d4); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+
+.sol-nav {
+  display: flex; align-items: center; gap: 6px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 5px 8px;
+}
+.nav-btn { padding: 4px 10px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 12px; cursor: pointer; flex-shrink: 0; }
+.nav-btn:hover:not(:disabled) { border-color: #a78bfa; color: #a78bfa; }
+.nav-btn:disabled { opacity: .3; cursor: not-allowed; }
+.sol-label { font-size: 11px; color: var(--text2); flex: 1; text-align: center; }
+
+/* ===== 盤面 ===== */
 .board-preview {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 0;
-  /* 横幅いっぱいだが最大は画面高さの半分 */
   width: min(calc(100vw - 2rem), 50vh);
   aspect-ratio: 1;
   border-radius: var(--radius);
@@ -46,136 +69,72 @@ header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: f
 }
 .bp-cell {
   aspect-ratio: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 8px;
-  font-weight: 700;
-  /* 枠線でピース境界を表現 */
-  box-shadow: inset 0 0 0 1.5px var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 8px; font-weight: 700;
   background: var(--surface2);
-  color: transparent;
-  transition: background .15s;
 }
 
-/* ===== セクション共通 ===== */
+/* ===== セクション ===== */
 .section { padding: .6rem 1rem; border-top: 1px solid var(--border); }
 .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; gap: 8px; }
 .section-title { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text2); white-space: nowrap; }
 
-/* ===== ランクフィルタ（ラジオ式） ===== */
+/* ===== ランクフィルタ ===== */
 .rank-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
 .rank-radio-item { display: flex; flex-direction: row-reverse; align-items: center; gap: 3px; cursor: pointer; }
-.rank-badge {
-  font-size: 12px; font-weight: 700;
-  padding: 2px 9px; border-radius: 10px;
-  cursor: pointer; transition: opacity .15s;
-}
+.rank-badge { font-size: 12px; font-weight: 700; padding: 2px 9px; border-radius: 10px; cursor: pointer; }
 .rank-radio { appearance: none; width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--border2); cursor: pointer; flex-shrink: 0; position: relative; transition: all .15s; }
 .rank-radio:checked { border-color: #a78bfa; }
 .rank-radio:checked::after { content:''; position:absolute; left:3px; top:3px; width:6px; height:6px; border-radius:50%; background:#a78bfa; }
 
-/* ===== ピース選択（横スクロール） ===== */
-.piece-scroll-wrap {
+/* ===== 横スクロールエリア（スクロールバー付き） ===== */
+.hscroll-wrap {
+  position: relative;
+}
+.hscroll-inner {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: 4px;
+  padding-bottom: 8px;
+  /* PCでスクロールバーを常に表示 */
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
 }
-.piece-scroll-wrap::-webkit-scrollbar { display: none; }
-.piece-scroll {
+.hscroll-inner::-webkit-scrollbar { height: 5px; }
+.hscroll-inner::-webkit-scrollbar-track { background: var(--surface2); border-radius: 3px; }
+.hscroll-inner::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+.hscroll-inner::-webkit-scrollbar-thumb:hover { background: #555570; }
+.hscroll-row {
   display: flex;
   gap: 6px;
   width: max-content;
   align-items: flex-start;
 }
+
+/* ===== ピースカード（選択・表示共通） ===== */
 .pcard {
-  background: var(--surface2);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 6px 5px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  cursor: pointer;
-  transition: border-color .15s;
-  flex-shrink: 0;
-  min-width: 48px;
+  background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 6px 5px; display: flex; flex-direction: column; align-items: center; gap: 3px;
+  cursor: pointer; transition: border-color .15s; flex-shrink: 0; min-width: 50px;
 }
 .pcard:hover { border-color: var(--border2); }
 .pcard.on { border-width: 1.5px; background: #1c1c2e; }
 .pcard-id { font-size: 9px; color: var(--text2); }
+.pcard-cnt { font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 8px; background: var(--surface); color: var(--text2); }
 
-/* ===== 選択中ピースエリア ===== */
-.selected-scroll-wrap {
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: 4px;
-}
-.selected-scroll-wrap::-webkit-scrollbar { display: none; }
-.selected-scroll {
-  display: flex;
-  gap: 6px;
-  width: max-content;
-  align-items: flex-start;
-}
-.sel-card {
-  background: var(--surface2);
-  border: 1.5px solid var(--border);
-  border-radius: var(--radius);
-  padding: 6px 5px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 3px;
-  cursor: pointer;
-  flex-shrink: 0;
-  min-width: 48px;
-  position: relative;
-  transition: opacity .15s;
-}
-.sel-card:hover { opacity: .75; }
-.sel-cnt {
-  font-size: 10px;
-  font-weight: 700;
-  padding: 1px 5px;
-  border-radius: 8px;
-  background: var(--surface);
-  color: var(--text2);
-}
-.empty-sel { font-size: 12px; color: var(--text3); padding: 4px 0; }
-
-/* ===== アクションボタン ===== */
+/* ===== アクション ===== */
 .action-row { display: flex; gap: 8px; padding: .6rem 1rem; border-top: 1px solid var(--border); }
-.solve-btn { flex: 1; padding: 11px; background: linear-gradient(135deg,#7c3aed,#06b6d4); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; letter-spacing: .04em; }
-.solve-btn:hover { opacity: .85; }
-.solve-btn:disabled { background: var(--surface2); color: var(--text2); cursor: not-allowed; opacity: 1; }
-.clear-btn { padding: 11px 14px; background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; cursor: pointer; }
-.clear-btn:hover { border-color: var(--border2); color: var(--text); }
+.solve-btn { flex:1; padding:11px; background:linear-gradient(135deg,#7c3aed,#06b6d4); color:#fff; border:none; border-radius:var(--radius); font-size:14px; font-weight:700; cursor:pointer; transition:opacity .15s; letter-spacing:.04em; }
+.solve-btn:hover { opacity:.85; }
+.solve-btn:disabled { background:var(--surface2); color:var(--text2); cursor:not-allowed; opacity:1; }
+.clear-btn { padding:11px 14px; background:transparent; color:var(--text2); border:1px solid var(--border); border-radius:var(--radius); font-size:13px; cursor:pointer; }
+.clear-btn:hover { border-color:var(--border2); color:var(--text); }
 
-/* ===== 結果エリア ===== */
-.result-section { padding: .6rem 1rem 1rem; border-top: 1px solid var(--border); }
-.result-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 10px; }
-.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 7px 10px; }
-.stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--text2); margin-bottom: 2px; }
-.stat-val { font-size: 19px; font-weight: 700; }
-.stat-val.perfect { background: linear-gradient(90deg,#7c3aed,#06b6d4); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
-
-.sol-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
-.nav-btn { padding: 5px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 12px; cursor: pointer; }
-.nav-btn:hover:not(:disabled) { border-color: #a78bfa; color: #a78bfa; }
-.nav-btn:disabled { opacity: .3; cursor: not-allowed; }
-.sol-label { font-size: 12px; color: var(--text2); }
-
-/* SSマーブル */
-@keyframes marble { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-.ss-marble-text { background: linear-gradient(270deg,#7c3aed,#06b6d4,#a78bfa,#22d3ee); background-size:400% 400%; animation:marble 3s ease infinite; -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-weight:700; display:inline-block; }
-
+.empty-sel { font-size: 12px; color: var(--text3); padding: 4px 0; }
 .no-result { color: var(--text2); font-size: 13px; padding: .5rem 0; }
+
+@keyframes marble { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+.ss-marble-text { background:linear-gradient(270deg,#7c3aed,#06b6d4,#a78bfa,#22d3ee); background-size:400% 400%; animation:marble 3s ease infinite; -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-weight:700; display:inline-block; }
 </style>
 </head>
 <body>
@@ -187,12 +146,16 @@ header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: f
 
 <div class="page">
 
-  <!-- 盤面プレビュー -->
+  <!-- 盤面 + 結果オーバーレイ -->
   <div class="board-wrap">
+    <div class="result-overlay" id="result-overlay">
+      <div class="result-stats" id="result-stats"></div>
+      <div class="sol-nav" id="sol-nav"></div>
+    </div>
     <div class="board-preview" id="board-preview"></div>
   </div>
 
-  <!-- ランクフィルタ -->
+  <!-- ランク選択 -->
   <div class="section">
     <div class="section-header">
       <div class="section-title">表示ランク</div>
@@ -200,13 +163,15 @@ header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: f
     <div class="rank-row" id="rank-row"></div>
   </div>
 
-  <!-- ピース選択（横スクロール） -->
+  <!-- ピース選択 -->
   <div class="section">
     <div class="section-header">
       <div class="section-title">所持ピース選択（タップで追加）</div>
     </div>
-    <div class="piece-scroll-wrap">
-      <div class="piece-scroll" id="piece-scroll"></div>
+    <div class="hscroll-wrap">
+      <div class="hscroll-inner">
+        <div class="hscroll-row" id="piece-scroll"></div>
+      </div>
     </div>
   </div>
 
@@ -215,8 +180,10 @@ header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: f
     <div class="section-header">
       <div class="section-title" id="sel-title">選択中のピース（タップで削除）</div>
     </div>
-    <div class="selected-scroll-wrap">
-      <div class="selected-scroll" id="selected-scroll"></div>
+    <div class="hscroll-wrap">
+      <div class="hscroll-inner">
+        <div class="hscroll-row" id="selected-scroll"></div>
+      </div>
     </div>
   </div>
 
@@ -226,20 +193,17 @@ header { padding: .6rem 1rem; border-bottom: 1px solid var(--border); display: f
     <button class="clear-btn" onclick="clearAll()">リセット</button>
   </div>
 
-  <!-- 結果 -->
-  <div class="result-section" id="result-section" style="display:none;"></div>
-
 </div>
 
 <script>
 const RANKS = ['SS','S','A','B','C','D'];
 const RANK_META = {
-  SS: { color:'#a78bfa', color2:'#22d3ee', bg:'#2d1f5e', border:'#7c3aed', pt:128, marble:true },
-  S:  { color:'#f87171', bg:'#3d1515', border:'#dc2626', pt:64 },
-  A:  { color:'#fb923c', bg:'#3d220a', border:'#ea580c', pt:32 },
-  B:  { color:'#c084fc', bg:'#2a1a50', border:'#9333ea', pt:16 },
-  C:  { color:'#60a5fa', bg:'#0f2040', border:'#2563eb', pt:8  },
-  D:  { color:'#4ade80', bg:'#0d2a18', border:'#16a34a', pt:4  },
+  SS:{color:'#a78bfa',color2:'#22d3ee',bg:'#2d1f5e',border:'#7c3aed',pt:128,marble:true},
+  S: {color:'#f87171',bg:'#3d1515',border:'#dc2626',pt:64},
+  A: {color:'#fb923c',bg:'#3d220a',border:'#ea580c',pt:32},
+  B: {color:'#c084fc',bg:'#2a1a50',border:'#9333ea',pt:16},
+  C: {color:'#60a5fa',bg:'#0f2040',border:'#2563eb',pt:8},
+  D: {color:'#4ade80',bg:'#0d2a18',border:'#16a34a',pt:4},
 };
 const RANK_ORDER = {SS:0,S:1,A:2,B:3,C:4,D:5};
 
@@ -359,6 +323,7 @@ let currentRank = 'SS';
 let quantities = {};
 ALL_PIECES.forEach(p => quantities[p.id] = 0);
 let solutions = [];
+let currentSolIdx = 0;
 
 // ===== ミニピース描画 =====
 function drawMini(cells, color, sz) {
@@ -370,8 +335,7 @@ function drawMini(cells, color, sz) {
     const cell = document.createElement('div');
     const filled = cells.some(([pr,pc]) => pr===r && pc===c);
     cell.style.cssText = `width:${sz}px;height:${sz}px;border-radius:1px;` +
-      `background:${filled ? color+'66' : 'transparent'};` +
-      `border:1px solid ${filled ? color+'bb' : 'transparent'};`;
+      `background:${filled?color+'66':'transparent'};border:1px solid ${filled?color+'bb':'transparent'};`;
     wrap.appendChild(cell);
   }
   return wrap;
@@ -389,36 +353,25 @@ function buildBoardPreview() {
   }
 }
 
-// 隣接するマスが同じピースかどうかで枠線を決定
 function updateBoardPreview(board, inventory, colorMap) {
   for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
     const el = document.getElementById('bp-' + (r*5+c));
     if (!el) continue;
-    const pi = board ? board[r][c] : -1;
+    const pi = board[r][c];
     if (pi === -1) {
-      el.style.cssText = '';
-      el.className = 'bp-cell';
-      el.textContent = '';
+      el.style.cssText = ''; el.textContent = '';
       continue;
     }
     const col = colorMap[pi];
     const p = inventory[pi];
     const m = RANK_META[p.rank];
-
-    // 各辺：隣が同じpiなら境界線なし（透明）、違うなら背景色の暗い枠
-    const top    = (r > 0 && board[r-1][c] === pi) ? 'transparent' : 'rgba(0,0,0,0.6)';
-    const bottom = (r < 4 && board[r+1][c] === pi) ? 'transparent' : 'rgba(0,0,0,0.6)';
-    const left   = (c > 0 && board[r][c-1] === pi) ? 'transparent' : 'rgba(0,0,0,0.6)';
-    const right  = (c < 4 && board[r][c+1] === pi) ? 'transparent' : 'rgba(0,0,0,0.6)';
-
-    el.className = 'bp-cell';
-    if (m.marble) {
-      el.style.background = 'linear-gradient(135deg,#7c3aed88,#06b6d488)';
-    } else {
-      el.style.background = col + '55';
-    }
+    const top    = (r>0 && board[r-1][c]===pi) ? 'transparent' : 'rgba(0,0,0,0.7)';
+    const bottom = (r<4 && board[r+1][c]===pi) ? 'transparent' : 'rgba(0,0,0,0.7)';
+    const left   = (c>0 && board[r][c-1]===pi) ? 'transparent' : 'rgba(0,0,0,0.7)';
+    const right  = (c<4 && board[r][c+1]===pi) ? 'transparent' : 'rgba(0,0,0,0.7)';
+    el.style.background = m.marble ? 'linear-gradient(135deg,#7c3aed88,#06b6d488)' : col+'55';
     el.style.color = col;
-    el.style.boxShadow = `inset 3px 0 0 ${left}, inset -3px 0 0 ${right}, inset 0 3px 0 ${top}, inset 0 -3px 0 ${bottom}`;
+    el.style.boxShadow = `inset 3px 0 0 ${left},inset -3px 0 0 ${right},inset 0 3px 0 ${top},inset 0 -3px 0 ${bottom}`;
     el.textContent = p.id;
   }
 }
@@ -426,11 +379,11 @@ function updateBoardPreview(board, inventory, colorMap) {
 function resetBoardPreview() {
   for (let i = 0; i < 25; i++) {
     const el = document.getElementById('bp-' + i);
-    if (el) { el.className = 'bp-cell'; el.style.cssText = ''; el.textContent = ''; }
+    if (el) { el.style.cssText = ''; el.textContent = ''; }
   }
 }
 
-// ===== ランクフィルタ（ラジオ式） =====
+// ===== ランクフィルタ =====
 function buildRankRow() {
   const cont = document.getElementById('rank-row');
   cont.innerHTML = '';
@@ -438,15 +391,10 @@ function buildRankRow() {
     const m = RANK_META[r];
     const item = document.createElement('label');
     item.className = 'rank-radio-item';
-
     const rb = document.createElement('input');
-    rb.type = 'radio';
-    rb.name = 'rank-select';
-    rb.className = 'rank-radio';
-    rb.value = r;
+    rb.type = 'radio'; rb.name = 'rank-select'; rb.className = 'rank-radio'; rb.value = r;
     rb.checked = r === currentRank;
     rb.onchange = () => { currentRank = r; renderPieceScroll(); };
-
     const badge = document.createElement('span');
     badge.className = 'rank-badge';
     if (m.marble) {
@@ -456,9 +404,7 @@ function buildRankRow() {
       badge.textContent = r;
       badge.style.cssText = `background:${m.bg};color:${m.color};border:1px solid ${m.border};`;
     }
-
-    item.appendChild(badge);
-    item.appendChild(rb);
+    item.appendChild(badge); item.appendChild(rb);
     cont.appendChild(item);
   });
 }
@@ -467,22 +413,18 @@ function buildRankRow() {
 function renderPieceScroll() {
   const cont = document.getElementById('piece-scroll');
   cont.innerHTML = '';
-  const pieces = ALL_PIECES.filter(p => p.rank === currentRank);
-  const m = RANK_META[currentRank];
-  pieces.forEach(p => {
+  ALL_PIECES.filter(p => p.rank === currentRank).forEach(p => {
+    const m = RANK_META[p.rank];
     const card = document.createElement('div');
     card.className = 'pcard' + (quantities[p.id] > 0 ? ' on' : '');
     card.id = 'pc-' + p.id;
     if (quantities[p.id] > 0) card.style.borderColor = m.border;
-
     card.appendChild(drawMini(p.cells, m.color, 13));
-
     const idEl = document.createElement('div');
     idEl.className = 'pcard-id';
     idEl.style.color = quantities[p.id] > 0 ? m.color : '';
     idEl.textContent = p.id;
     card.appendChild(idEl);
-
     card.onclick = () => {
       quantities[p.id]++;
       refreshPieceCard(p);
@@ -508,36 +450,26 @@ function refreshPieceCard(p) {
 function renderSelectedScroll() {
   const cont = document.getElementById('selected-scroll');
   cont.innerHTML = '';
-
   const selected = ALL_PIECES
     .filter(p => quantities[p.id] > 0)
-    .sort((a, b) => RANK_ORDER[a.rank] - RANK_ORDER[b.rank]);
-
+    .sort((a,b) => RANK_ORDER[a.rank] - RANK_ORDER[b.rank]);
   if (!selected.length) {
     cont.innerHTML = '<div class="empty-sel">まだ選択されていません</div>';
     return;
   }
-
   selected.forEach(p => {
     const m = RANK_META[p.rank];
     const card = document.createElement('div');
-    card.className = 'sel-card';
+    card.className = 'pcard on';
     card.style.borderColor = m.border;
     card.style.background = m.bg;
-
     card.appendChild(drawMini(p.cells, m.color, 13));
-
     const idEl = document.createElement('div');
-    idEl.className = 'pcard-id';
-    idEl.style.color = m.color;
-    idEl.textContent = p.id;
+    idEl.className = 'pcard-id'; idEl.style.color = m.color; idEl.textContent = p.id;
     card.appendChild(idEl);
-
     const cnt = document.createElement('div');
-    cnt.className = 'sel-cnt';
-    cnt.textContent = `×${quantities[p.id]}`;
+    cnt.className = 'pcard-cnt'; cnt.textContent = `×${quantities[p.id]}`;
     card.appendChild(cnt);
-
     card.onclick = () => {
       if (quantities[p.id] > 0) quantities[p.id]--;
       refreshPieceCard(p);
@@ -550,7 +482,7 @@ function renderSelectedScroll() {
 
 function updateSummary() {
   const sel = ALL_PIECES.filter(p => quantities[p.id] > 0);
-  const totalPcs = sel.reduce((s, p) => s + quantities[p.id], 0);
+  const totalPcs = sel.reduce((s,p) => s + quantities[p.id], 0);
   const title = document.getElementById('sel-title');
   const btn = document.getElementById('solve-btn');
   if (sel.length) {
@@ -567,9 +499,15 @@ function clearAll() {
   renderPieceScroll();
   renderSelectedScroll();
   updateSummary();
-  document.getElementById('result-section').style.display = 'none';
-  resetBoardPreview();
   solutions = [];
+  currentSolIdx = 0;
+  document.getElementById('result-overlay').classList.remove('show');
+  resetBoardPreview();
+}
+
+// ===== pt計算 =====
+function calcPt(sol, inventory) {
+  return [...new Set(sol.usedIdx)].reduce((s,pi) => s + RANK_META[inventory[pi].rank].pt, 0);
 }
 
 // ===== ソルバー =====
@@ -581,7 +519,8 @@ function doSolve() {
     ALL_PIECES.forEach(p => { for (let i = 0; i < quantities[p.id]; i++) inventory.push(p); });
 
     const board = Array(5).fill(null).map(() => Array(5).fill(-1));
-    let bestFilled = 0, bestSols = [];
+    // filled別に最大30件ずつ収集
+    const solsByFilled = {};
     const used = Array(inventory.length).fill(false);
     let calls = 0;
     const MAX = 300000;
@@ -590,13 +529,14 @@ function doSolve() {
     function place(r,c,cells,idx){ for(const [dr,dc] of cells) board[r+dr][c+dc]=idx; }
     function unplace(cells,r,c){ for(const [dr,dc] of cells) board[r+dr][c+dc]=-1; }
     function countFilled(){ let n=0; for(let r=0;r<5;r++) for(let c=0;c<5;c++) if(board[r][c]!==-1)n++; return n; }
-    function saveSol(f){ bestSols.push({board:board.map(r=>[...r]),filled:f,usedIdx:used.map((v,i)=>v?i:-1).filter(i=>i>=0)}); }
 
     function search(){
       if(calls++>MAX) return;
       const cur=countFilled();
-      if(cur>bestFilled){bestFilled=cur;bestSols=[];}
-      if(cur===bestFilled&&bestSols.length<30) saveSol(cur);
+      if (!solsByFilled[cur]) solsByFilled[cur] = [];
+      if (solsByFilled[cur].length < 60) {
+        solsByFilled[cur].push({board:board.map(r=>[...r]),filled:cur,usedIdx:used.map((v,i)=>v?i:-1).filter(i=>i>=0)});
+      }
       if(cur===25) return;
       const seen=new Set();
       for(let pi=0;pi<inventory.length;pi++){
@@ -617,64 +557,72 @@ function doSolve() {
     }
     search();
 
-    const seenB=new Set(), unique=[];
-    for(const s of bestSols){
-      const key=s.board.flat().map(i=>i>=0?inventory[i].id:'_').join(',');
-      if(!seenB.has(key)){seenB.add(key);unique.push(s);}
+    // filled降順 → pt降順 で並べて重複除去
+    const allSols = Object.values(solsByFilled).flat();
+    allSols.sort((a,b) => {
+      if (b.filled !== a.filled) return b.filled - a.filled;
+      return calcPt(b,inventory) - calcPt(a,inventory);
+    });
+
+    const seenB = new Set(), unique = [];
+    for (const s of allSols) {
+      const key = s.board.flat().map(i => i>=0 ? inventory[i].id : '_').join(',');
+      if (!seenB.has(key)) { seenB.add(key); unique.push(s); }
+      if (unique.length >= 30) break;
     }
-    solutions=unique;
+    solutions = unique;
+    currentSolIdx = 0;
     renderResults(inventory);
-    btn.disabled=false; btn.textContent='攻略を計算する';
+    btn.disabled = false; btn.textContent = '攻略を計算する';
   }, 20);
 }
 
 // ===== 結果描画 =====
 function renderResults(inventory) {
-  const sec = document.getElementById('result-section');
-  sec.style.display = '';
-  sec.innerHTML = '';
+  const overlay = document.getElementById('result-overlay');
+  const statsEl = document.getElementById('result-stats');
+  const navEl = document.getElementById('sol-nav');
 
   if (!solutions.length) {
-    sec.innerHTML = '<div class="no-result">解が見つかりませんでした。別のピースを試してください。</div>';
+    overlay.classList.remove('show');
+    resetBoardPreview();
     return;
   }
+
+  overlay.classList.add('show');
 
   function makeColorMap(sol) {
     const map = {};
     [...new Set(sol.usedIdx)].forEach(pi => { map[pi] = RANK_META[inventory[pi].rank].color; });
     return map;
   }
-  function calcPt(sol) {
-    return [...new Set(sol.usedIdx)].reduce((s, pi) => s + RANK_META[inventory[pi].rank].pt, 0);
-  }
-
-  const statsEl = document.createElement('div'); statsEl.className = 'result-stats'; sec.appendChild(statsEl);
-  const navEl = document.createElement('div'); navEl.className = 'sol-nav'; sec.appendChild(navEl);
-
-  let idx = 0;
 
   function renderSol() {
-    const sol = solutions[idx];
+    const sol = solutions[currentSolIdx];
     const colorMap = makeColorMap(sol);
-    const pt = calcPt(sol);
+    const pt = calcPt(sol, inventory);
 
+    // stats
     statsEl.innerHTML = '';
     [{label:'充填マス',val:`${sol.filled}/25`,perfect:sol.filled===25},
      {label:'現在のpt',val:`${pt}`,perfect:sol.filled===25},
-     {label:'パターン',val:`${idx+1}/${solutions.length}`,perfect:false}
-    ].forEach(({label,val,perfect})=>{
-      const c=document.createElement('div'); c.className='stat-card';
-      c.innerHTML=`<div class="stat-label">${label}</div><div class="stat-val${perfect?' perfect':''}">${val}</div>`;
+     {label:'パターン',val:`${currentSolIdx+1}/${solutions.length}`,perfect:false}
+    ].forEach(({label,val,perfect}) => {
+      const c = document.createElement('div'); c.className='stat-card';
+      c.innerHTML = `<div class="stat-label">${label}</div><div class="stat-val${perfect?' perfect':''}">${val}</div>`;
       statsEl.appendChild(c);
     });
 
-    navEl.innerHTML='';
-    const prev=document.createElement('button'); prev.className='nav-btn'; prev.textContent='← 前';
-    prev.disabled=idx===0; prev.onclick=()=>{if(idx>0){idx--;renderSol();}};
-    const lbl=document.createElement('span'); lbl.className='sol-label';
-    lbl.textContent=`${sol.filled}マス / ${pt}pt`;
-    const next=document.createElement('button'); next.className='nav-btn'; next.textContent='次 →';
-    next.disabled=idx===solutions.length-1; next.onclick=()=>{if(idx<solutions.length-1){idx++;renderSol();}};
+    // nav
+    navEl.innerHTML = '';
+    const prev = document.createElement('button'); prev.className='nav-btn'; prev.textContent='← 前';
+    prev.disabled = currentSolIdx===0;
+    prev.onclick = () => { if(currentSolIdx>0){currentSolIdx--;renderSol();} };
+    const lbl = document.createElement('span'); lbl.className='sol-label';
+    lbl.textContent = `${sol.filled}マス / ${pt}pt`;
+    const next = document.createElement('button'); next.className='nav-btn'; next.textContent='次 →';
+    next.disabled = currentSolIdx===solutions.length-1;
+    next.onclick = () => { if(currentSolIdx<solutions.length-1){currentSolIdx++;renderSol();} };
     navEl.appendChild(prev); navEl.appendChild(lbl); navEl.appendChild(next);
 
     updateBoardPreview(sol.board, inventory, colorMap);
