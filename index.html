@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QB:LB パズル攻略ツール</title>
+<style>
+  :root {
+    --bg: #0f0f13;
+    --surface: #1a1a22;
+    --surface2: #222230;
+    --border: #2e2e40;
+    --border2: #3a3a52;
+    --text: #e8e8f0;
+    --text2: #8888aa;
+    --text3: #555570;
+    --cell: 48px;
+    --radius: 8px;
+    --radius-lg: 12px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; min-height: 100vh; }
+
+  header { border-bottom: 1px solid var(--border); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
+  .logo { font-size: 18px; font-weight: 700; letter-spacing: .04em; }
+  .logo span { color: #a78bfa; }
+  .subtitle { font-size: 12px; color: var(--text2); }
+
+  .main { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 57px); }
+
+  .sidebar { border-right: 1px solid var(--border); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; max-height: calc(100vh - 57px); }
+  .sidebar::-webkit-scrollbar { width: 4px; }
+  .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem; }
+  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); margin-bottom: .75rem; }
+
+  .rank-filters { display: flex; flex-direction: column; gap: 4px; }
+  .rank-filter-row { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 6px 8px; border-radius: var(--radius); transition: background .15s; user-select: none; }
+  .rank-filter-row:hover { background: var(--surface2); }
+  .rank-cb { appearance: none; width: 16px; height: 16px; border-radius: 4px; cursor: pointer; flex-shrink: 0; position: relative; transition: all .15s; }
+  .rank-cb:checked::after { content: ''; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg); }
+  .rank-badge { font-size: 13px; font-weight: 700; padding: 2px 10px; border-radius: 20px; min-width: 44px; text-align: center; }
+  .rank-info { font-size: 12px; color: var(--text2); flex: 1; }
+  .rank-sel-cnt { font-size: 11px; color: var(--text3); }
+
+  .piece-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 360px; overflow-y: auto; }
+  .piece-list::-webkit-scrollbar { width: 4px; }
+  .piece-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .pcard { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: border-color .15s; }
+  .pcard:hover { border-color: var(--border2); }
+  .pcard.active { border-color: currentColor; background: #1e1e2e; }
+  .pcard-id { font-size: 10px; color: var(--text2); }
+  .qty-row { display: flex; align-items: center; gap: 3px; }
+  .qty-btn { width: 20px; height: 20px; background: var(--surface); border: 1px solid var(--border2); border-radius: 4px; color: var(--text); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .1s; line-height: 1; }
+  .qty-btn:hover { background: var(--border); }
+  .qty-val { font-size: 13px; font-weight: 700; min-width: 18px; text-align: center; color: var(--text); }
+
+  .solve-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #7c3aed, #06b6d4); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; letter-spacing: .05em; }
+  .solve-btn:hover { opacity: .85; }
+  .solve-btn:disabled { background: var(--surface2); color: var(--text2); cursor: not-allowed; opacity: 1; }
+  .clear-btn { width: 100%; padding: 8px; background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; cursor: pointer; transition: all .15s; }
+  .clear-btn:hover { border-color: var(--border2); color: var(--text); }
+
+  .summary-bar { font-size: 12px; color: var(--text2); text-align: center; }
+  .summary-bar strong { color: var(--text); }
+
+  .result-area { padding: 1.5rem; overflow-y: auto; max-height: calc(100vh - 57px); }
+  .result-area::-webkit-scrollbar { width: 4px; }
+  .result-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1rem; color: var(--text3); font-size: 14px; padding: 4rem; text-align: center; min-height: 300px; }
+
+  .result-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
+  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .75rem 1rem; }
+  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text2); margin-bottom: 4px; }
+  .stat-val { font-size: 22px; font-weight: 700; color: var(--text); }
+  .stat-val.perfect { background: linear-gradient(90deg,#7c3aed,#06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+
+  .sol-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; }
+  .nav-btn { padding: 6px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; cursor: pointer; transition: all .15s; }
+  .nav-btn:hover:not(:disabled) { border-color: #7c3aed; color: #a78bfa; }
+  .nav-btn:disabled { opacity: .3; cursor: not-allowed; }
+  .sol-label { font-size: 13px; color: var(--text2); }
+
+  .board-wrap { display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .board { display: grid; grid-template-columns: repeat(5, var(--cell)); gap: 3px; }
+  .board-cell { width: var(--cell); height: var(--cell); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; border: 1px solid transparent; }
+  .board-cell.empty { background: var(--surface2); border-color: var(--border); color: var(--text3); }
+
+  .legend-wrap { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
+  .legend-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text2); margin-bottom: 2px; }
+  .legend-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: var(--radius); }
+  .legend-id { font-size: 11px; font-weight: 700; min-width: 32px; }
+  .legend-name { font-size: 11px; color: var(--text2); }
+
+  .no-result { color: var(--text2); font-size: 14px; padding: 2rem; text-align: center; }
+
+  /* SSランク マーブルアニメ */
+  @keyframes marble { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+  .ss-marble { background: linear-gradient(270deg,#7c3aed,#06b6d4,#a78bfa,#22d3ee); background-size: 400% 400%; animation: marble 4s ease infinite; -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; }
+
+  @media (max-width: 700px) {
+    .main { grid-template-columns: 1fr; }
+    .sidebar { max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
+    .result-area { max-height: none; }
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <div class="logo">QB<span>:LB</span> パズル攻略ツール</div>
+    <div class="subtitle">Queen's Blade Limit Break — サードパーティツール / SS:107種類対応</div>
+  </div>
+</header>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="panel">
+      <div class="panel-title">表示するランク</div>
+      <div class="rank-filters" id="rank-filters"></div>
+    </div>
+    <div class="panel">
+      <div class="panel-title">ピース選択</div>
+      <div class="piece-list" id="piece-list"></div>
+    </div>
+    <div class="summary-bar" id="summary-bar">ピースを選択してください</div>
+    <button class="solve-btn" id="solve-btn" onclick="doSolve()" disabled>攻略を計算する</button>
+    <button class="clear-btn" onclick="clearAll()">全リセット</button>
+  </div>
+
+  <div class="result-area" id="result-area">
+    <div class="empty-state">
+      <div style="font-size:48px;opacity:.2;">🧩</div>
+      <div>左のパネルでピースを選択して<br>「攻略を計算する」を押してください</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ランク色設定: D緑 C青 B紫 A橙 S赤 SS紫&水色マーブル
+const RANK_META = {
+  SS: { color: '#a78bfa', color2: '#22d3ee', bg: '#1e1535', border: '#6d28d9', label: 'SS', size: 1, marble: true },
+  S:  { color: '#f87171', bg: '#2d1515', border: '#dc2626', label: 'S',  size: 2 },
+  A:  { color: '#fb923c', bg: '#2d1a0a', border: '#ea580c', label: 'A',  size: 3 },
+  B:  { color: '#c084fc', bg: '#1e1535', border: '#9333ea', label: 'B',  size: 4 },
+  C:  { color: '#60a5fa', bg: '#0f1f38', border: '#2563eb', label: 'C',  size: 5 },
+  D:  { color: '#4ade80', bg: '#0d2a18', border: '#16a34a', label: 'D',  size: 6 },
+};
+
+// 全107種類（Pythonで検証済み・連結・重複なし）
+const ALL_PIECES = [
+  {rank:'SS',id:'SS1',cells:[[0,0]]},
+
+  {rank:'S',id:'S1',cells:[[0,0],[0,1]]},
+  {rank:'S',id:'S2',cells:[[0,0],[1,0]]},
+
+  {rank:'A',id:'A1',cells:[[0,0],[0,1],[0,2]]},
+  {rank:'A',id:'A2',cells:[[0,0],[0,1],[1,0]]},
+  {rank:'A',id:'A3',cells:[[0,0],[0,1],[1,1]]},
+  {rank:'A',id:'A4',cells:[[0,0],[1,0],[1,1]]},
+  {rank:'A',id:'A5',cells:[[0,0],[1,0],[2,0]]},
+  {rank:'A',id:'A6',cells:[[0,1],[1,0],[1,1]]},
+
+  {rank:'B',id:'B1', cells:[[0,0],[0,1],[0,2],[1,0]]},
+  {rank:'B',id:'B2', cells:[[0,0],[0,1],[0,2],[1,1]]},
+  {rank:'B',id:'B3', cells:[[0,0],[0,1],[0,2],[1,2]]},
+  {rank:'B',id:'B4', cells:[[0,0],[0,1],[1,0],[1,1]]},
+  {rank:'B',id:'B5', cells:[[0,0],[0,1],[1,0],[2,0]]},
+  {rank:'B',id:'B6', cells:[[0,0],[0,1],[1,1],[1,2]]},
+  {rank:'B',id:'B7', cells:[[0,0],[0,1],[1,1],[2,1]]},
+  {rank:'B',id:'B8', cells:[[0,0],[1,0],[1,1],[1,2]]},
+  {rank:'B',id:'B9', cells:[[0,0],[1,0],[1,1],[2,0]]},
+  {rank:'B',id:'B10',cells:[[0,0],[1,0],[1,1],[2,1]]},
+  {rank:'B',id:'B11',cells:[[0,0],[1,0],[2,0],[2,1]]},
+  {rank:'B',id:'B12',cells:[[0,1],[0,2],[1,0],[1,1]]},
+  {rank:'B',id:'B13',cells:[[0,1],[1,0],[1,1],[1,2]]},
+  {rank:'B',id:'B14',cells:[[0,1],[1,0],[1,1],[2,0]]},
+  {rank:'B',id:'B15',cells:[[0,1],[1,0],[1,1],[2,1]]},
+  {rank:'B',id:'B16',cells:[[0,1],[1,1],[2,0],[2,1]]},
+  {rank:'B',id:'B17',cells:[[0,2],[1,0],[1,1],[1,2]]},
+
+  // Cランク: 35種類（C31・C36の飛び地を除外）
+  {rank:'C',id:'C1', cells:[[0,0],[0,1],[0,2],[1,0],[1,1]]},
+  {rank:'C',id:'C2', cells:[[0,0],[0,1],[0,2],[1,0],[1,2]]},
+  {rank:'C',id:'C3', cells:[[0,0],[0,1],[0,2],[1,0],[2,0]]},
+  {rank:'C',id:'C4', cells:[[0,0],[0,1],[0,2],[1,1],[1,2]]},
+  {rank:'C',id:'C5', cells:[[0,0],[0,1],[0,2],[1,1],[2,1]]},
+  {rank:'C',id:'C6', cells:[[0,0],[0,1],[0,2],[1,2],[2,2]]},
+  {rank:'C',id:'C7', cells:[[0,0],[0,1],[1,0],[1,1],[1,2]]},
+  {rank:'C',id:'C8', cells:[[0,0],[0,1],[1,0],[1,1],[2,0]]},
+  {rank:'C',id:'C9', cells:[[0,0],[0,1],[1,0],[1,1],[2,1]]},
+  {rank:'C',id:'C10',cells:[[0,0],[0,1],[1,0],[2,0],[2,1]]},
+  {rank:'C',id:'C11',cells:[[0,0],[0,1],[1,1],[1,2],[2,1]]},
+  {rank:'C',id:'C12',cells:[[0,0],[0,1],[1,1],[1,2],[2,2]]},
+  {rank:'C',id:'C13',cells:[[0,0],[0,1],[1,1],[2,0],[2,1]]},
+  {rank:'C',id:'C14',cells:[[0,0],[0,1],[1,1],[2,1],[2,2]]},
+  {rank:'C',id:'C15',cells:[[0,0],[0,2],[1,0],[1,1],[1,2]]},
+  {rank:'C',id:'C16',cells:[[0,0],[1,0],[1,1],[1,2],[2,0]]},
+  {rank:'C',id:'C17',cells:[[0,0],[1,0],[1,1],[1,2],[2,1]]},
+  {rank:'C',id:'C18',cells:[[0,0],[1,0],[1,1],[1,2],[2,2]]},
+  {rank:'C',id:'C19',cells:[[0,0],[1,0],[1,1],[2,0],[2,1]]},
+  {rank:'C',id:'C20',cells:[[0,0],[1,0],[1,1],[2,1],[2,2]]},
+  {rank:'C',id:'C21',cells:[[0,0],[1,0],[2,0],[2,1],[2,2]]},
+  {rank:'C',id:'C22',cells:[[0,1],[0,2],[1,0],[1,1],[1,2]]},
+  {rank:'C',id:'C23',cells:[[0,1],[0,2],[1,0],[1,1],[2,0]]},
+  {rank:'C',id:'C24',cells:[[0,1],[0,2],[1,0],[1,1],[2,1]]},
+  {rank:'C',id:'C25',cells:[[0,1],[0,2],[1,1],[2,0],[2,1]]},
+  {rank:'C',id:'C26',cells:[[0,1],[1,0],[1,1],[1,2],[2,0]]},
+  {rank:'C',id:'C27',cells:[[0,1],[1,0],[1,1],[1,2],[2,1]]},
+  {rank:'C',id:'C28',cells:[[0,1],[1,0],[1,1],[1,2],[2,2]]},
+  {rank:'C',id:'C29',cells:[[0,1],[1,0],[1,1],[2,0],[2,1]]},
+  {rank:'C',id:'C30',cells:[[0,1],[1,0],[1,1],[2,1],[2,2]]},
+  {rank:'C',id:'C31',cells:[[0,1],[1,1],[1,2],[2,0],[2,1]]},  // 旧C31(飛び地)を削除→旧C32に繰り上げ
+  {rank:'C',id:'C32',cells:[[0,1],[1,1],[2,0],[2,1],[2,2]]},
+  {rank:'C',id:'C33',cells:[[0,2],[1,0],[1,1],[1,2],[2,0]]},
+  {rank:'C',id:'C34',cells:[[0,2],[1,0],[1,1],[1,2],[2,1]]},
+  {rank:'C',id:'C35',cells:[[0,2],[1,0],[1,1],[1,2],[2,2]]},
+  // 旧C36(飛び地=旧C31と同一)を削除
+  // 旧C37
+  {rank:'C',id:'C36',cells:[[0,2],[1,1],[1,2],[2,0],[2,1]]},
+  {rank:'C',id:'C37',cells:[[0,2],[1,2],[2,0],[2,1],[2,2]]},
+
+  {rank:'D',id:'D1', cells:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]]},
+  {rank:'D',id:'D2', cells:[[0,0],[0,1],[0,2],[1,0],[1,1],[2,0]]},
+  {rank:'D',id:'D3', cells:[[0,0],[0,1],[0,2],[1,0],[1,1],[2,1]]},
+  {rank:'D',id:'D4', cells:[[0,0],[0,1],[0,2],[1,0],[1,2],[2,0]]},
+  {rank:'D',id:'D5', cells:[[0,0],[0,1],[0,2],[1,0],[1,2],[2,2]]},
+  {rank:'D',id:'D6', cells:[[0,0],[0,1],[0,2],[1,0],[2,0],[2,1]]},
+  {rank:'D',id:'D7', cells:[[0,0],[0,1],[0,2],[1,1],[1,2],[2,1]]},
+  {rank:'D',id:'D8', cells:[[0,0],[0,1],[0,2],[1,1],[1,2],[2,2]]},
+  {rank:'D',id:'D9', cells:[[0,0],[0,1],[0,2],[1,1],[2,0],[2,1]]},
+  {rank:'D',id:'D10',cells:[[0,0],[0,1],[0,2],[1,1],[2,1],[2,2]]},
+  {rank:'D',id:'D11',cells:[[0,0],[0,1],[0,2],[1,2],[2,1],[2,2]]},
+  {rank:'D',id:'D12',cells:[[0,0],[0,1],[1,0],[1,1],[1,2],[2,0]]},
+  {rank:'D',id:'D13',cells:[[0,0],[0,1],[1,0],[1,1],[1,2],[2,1]]},
+  {rank:'D',id:'D14',cells:[[0,0],[0,1],[1,0],[1,1],[1,2],[2,2]]},
+  {rank:'D',id:'D15',cells:[[0,0],[0,1],[1,0],[1,1],[2,0],[2,1]]},
+  {rank:'D',id:'D16',cells:[[0,0],[0,1],[1,0],[1,1],[2,1],[2,2]]},
+  {rank:'D',id:'D17',cells:[[0,0],[0,1],[1,0],[2,0],[2,1],[2,2]]},
+  {rank:'D',id:'D18',cells:[[0,0],[0,1],[1,1],[1,2],[2,0],[2,1]]},
+  {rank:'D',id:'D19',cells:[[0,0],[0,1],[1,1],[1,2],[2,1],[2,2]]},
+  {rank:'D',id:'D20',cells:[[0,0],[0,1],[1,1],[2,0],[2,1],[2,2]]},
+  {rank:'D',id:'D21',cells:[[0,0],[0,2],[1,0],[1,1],[1,2],[2,0]]},
+  {rank:'D',id:'D22',cells:[[0,0],[0,2],[1,0],[1,1],[1,2],[2,1]]},
+  {rank:'D',id:'D23',cells:[[0,0],[0,2],[1,0],[1,1],[1,2],[2,2]]},
+  {rank:'D',id:'D24',cells:[[0,0],[1,0],[1,1],[1,2],[2,0],[2,1]]},
+  {rank:'D',id:'D25',cells:[[0,0],[1,0],[1,1],[1,2],[2,0],[2,2]]},
+  {rank:'D',id:'D26',cells:[[0,0],[1,0],[1,1],[1,2],[2,1],[2,2]]},
+  {rank:'D',id:'D27',cells:[[0,0],[1,0],[1,1],[2,0],[2,1],[2,2]]},
+  {rank:'D',id:'D28',cells:[[0,0],[1,0],[1,2],[2,0],[2,1],[2,2]]},
+  {rank:'D',id:'D29',cells:[[0,1],[0,2],[1,0],[1,1],[1,2],[2,0]]},
+  {rank:'D',id:'D30',cells:[[0,1],[0,2],[1,0],[1,1],[1,2],[2,1]]},
+  {rank:'D',id:'D31',cells:[[0,1],[0,2],[1,0],[1,1],[1,2],[2,2]]},
+  {rank:'D',id:'D32',cells:[[0,1],[0,2],[1,0],[1,1],[2,0],[2,1]]},
+  {rank:'D',id:'D33',cells:[[0,1],[0,2],[1,0],[1,1],[2,1],[2,2]]},
+  {rank:'D',id:'D34',cells:[[0,1],[0,2],[1,1],[1,2],[2,0],[2,1]]},
+  {rank:'D',id:'D35',cells:[[0,1],[0,2],[1,1],[2,0],[2,1],[2,2]]},
+  {rank:'D',id:'D36',cells:[[0,1],[0,2],[1,2],[2,0],[2,1],[2,2]]},
+  {rank:'D',id:'D37',cells:[[0,1],[1,0],[1,1],[1,2],[2,0],[2,1]]},
+  {rank:'D',id:'D38',cells:[[0,1],[1,0],[1,1],[1,2],[2,0],[2,2]]},
+  {rank:'D',id:'D39',cells:[[0,1],[1,0],[1,1],[1,2],[2,1],[2,2]]},
+  {rank:'D',id:'D40',cells:[[0,1],[1,0],[1,1],[2,0],[2,1],[2,2]]},
+  {rank:'D',id:'D41',cells:[[0,1],[1,1],[1,2],[2,0],[2,1],[2,2]]},
+  {rank:'D',id:'D42',cells:[[0,2],[1,0],[1,1],[1,2],[2,0],[2,1]]},
+  {rank:'D',id:'D43',cells:[[0,2],[1,0],[1,1],[1,2],[2,0],[2,2]]},
+  {rank:'D',id:'D44',cells:[[0,2],[1,0],[1,1],[1,2],[2,1],[2,2]]},
+  {rank:'D',id:'D45',cells:[[0,2],[1,0],[1,2],[2,0],[2,1],[2,2]]},
+  {rank:'D',id:'D46',cells:[[0,2],[1,1],[1,2],[2,0],[2,1],[2,2]]},
+];
+
+const PIECE_COLORS = [
+  '#818cf8','#34d399','#fb923c','#e879f9','#38bdf8',
+  '#facc15','#f87171','#a78bfa','#4ade80','#fb7185',
+  '#fbbf24','#60a5fa','#2dd4bf','#c084fc'
+];
+
+const RANKS = ['SS','S','A','B','C','D'];
+let visibleRanks = new Set(RANKS);
+let quantities = {};
+ALL_PIECES.forEach(p => quantities[p.id] = 0);
+let solutions = [];
+
+function buildRankFilters() {
+  const cont = document.getElementById('rank-filters');
+  cont.innerHTML = '';
+  RANKS.forEach(r => {
+    const m = RANK_META[r];
+    const row = document.createElement('label');
+    row.className = 'rank-filter-row';
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'rank-cb';
+    cb.checked = visibleRanks.has(r);
+    cb.style.cssText = `border: 1.5px solid ${m.border}; background: ${cb.checked ? m.border : 'transparent'};`;
+    cb.onchange = () => {
+      cb.style.background = cb.checked ? m.border : 'transparent';
+      if (cb.checked) visibleRanks.add(r); else visibleRanks.delete(r);
+      renderPieceList();
+    };
+
+    const badge = document.createElement('span');
+    badge.className = 'rank-badge';
+    if (m.marble) {
+      badge.innerHTML = `<span class="ss-marble">SS</span>`;
+      badge.style.cssText = `background:${m.bg};border:1px solid ${m.border};`;
+    } else {
+      badge.textContent = r;
+      badge.style.cssText = `background:${m.bg};color:${m.color};border:1px solid ${m.border};`;
+    }
+
+    const info = document.createElement('span');
+    info.className = 'rank-info';
+    const total = ALL_PIECES.filter(p => p.rank === r).length;
+    const sel = ALL_PIECES.filter(p => p.rank === r && quantities[p.id] > 0).length;
+    info.textContent = `${m.size}マス / ${total}種`;
+
+    const cnt = document.createElement('span');
+    cnt.className = 'rank-sel-cnt';
+    cnt.id = 'rcnt-' + r;
+    cnt.textContent = sel > 0 ? `選${sel}` : '';
+
+    row.appendChild(cb); row.appendChild(badge); row.appendChild(info); row.appendChild(cnt);
+    cont.appendChild(row);
+  });
+}
+
+function drawMiniPiece(cells, color, sz) {
+  const maxR = Math.max(...cells.map(c => c[0]));
+  const maxC = Math.max(...cells.map(c => c[1]));
+  const wrap = document.createElement('div');
+  wrap.style.cssText = `display:inline-grid;grid-template-columns:repeat(${maxC+1},${sz}px);gap:1px;`;
+  for (let r = 0; r <= maxR; r++) for (let c = 0; c <= maxC; c++) {
+    const cell = document.createElement('div');
+    const filled = cells.some(([pr, pc]) => pr === r && pc === c);
+    cell.style.cssText = `width:${sz}px;height:${sz}px;border-radius:2px;background:${filled ? color + '55' : 'transparent'};border:1px solid ${filled ? color + '99' : 'transparent'};`;
+    wrap.appendChild(cell);
+  }
+  return wrap;
+}
+
+function renderPieceList() {
+  const cont = document.getElementById('piece-list');
+  cont.innerHTML = '';
+  const visible = ALL_PIECES.filter(p => visibleRanks.has(p.rank));
+  visible.forEach(p => {
+    const m = RANK_META[p.rank];
+    const card = document.createElement('div');
+    card.className = 'pcard' + (quantities[p.id] > 0 ? ' active' : '');
+    card.id = 'pc-' + p.id;
+    card.style.color = m.color;
+    if (quantities[p.id] > 0) card.style.borderColor = m.border;
+
+    card.appendChild(drawMiniPiece(p.cells, m.color, 14));
+
+    const idEl = document.createElement('div');
+    idEl.className = 'pcard-id';
+    idEl.style.color = quantities[p.id] > 0 ? m.color : '';
+    idEl.textContent = p.id;
+    card.appendChild(idEl);
+
+    const qRow = document.createElement('div');
+    qRow.className = 'qty-row';
+    const minus = document.createElement('button');
+    minus.className = 'qty-btn';
+    minus.textContent = '−';
+    minus.onclick = e => { e.stopPropagation(); if (quantities[p.id] > 0) { quantities[p.id]--; refreshCard(p); } };
+    const valEl = document.createElement('span');
+    valEl.className = 'qty-val';
+    valEl.id = 'qv-' + p.id;
+    valEl.textContent = quantities[p.id];
+    const plus = document.createElement('button');
+    plus.className = 'qty-btn';
+    plus.textContent = '+';
+    plus.onclick = e => { e.stopPropagation(); if (quantities[p.id] < 9) { quantities[p.id]++; refreshCard(p); } };
+    qRow.appendChild(minus); qRow.appendChild(valEl); qRow.appendChild(plus);
+    card.appendChild(qRow);
+
+    card.onclick = () => {
+      quantities[p.id] = quantities[p.id] > 0 ? 0 : 1;
+      refreshCard(p);
+    };
+    cont.appendChild(card);
+  });
+  updateSummary();
+  // ランクフィルタの選択数更新
+  RANKS.forEach(r => {
+    const el = document.getElementById('rcnt-' + r);
+    if (el) {
+      const sel = ALL_PIECES.filter(p => p.rank === r && quantities[p.id] > 0).length;
+      el.textContent = sel > 0 ? `選${sel}` : '';
+    }
+  });
+}
+
+function refreshCard(p) {
+  const m = RANK_META[p.rank];
+  const card = document.getElementById('pc-' + p.id);
+  if (!card) return;
+  const valEl = document.getElementById('qv-' + p.id);
+  if (valEl) valEl.textContent = quantities[p.id];
+  const active = quantities[p.id] > 0;
+  card.classList.toggle('active', active);
+  card.style.borderColor = active ? m.border : '';
+  const idEl = card.querySelector('.pcard-id');
+  if (idEl) idEl.style.color = active ? m.color : '';
+  const el = document.getElementById('rcnt-' + p.rank);
+  if (el) {
+    const sel = ALL_PIECES.filter(q => q.rank === p.rank && quantities[q.id] > 0).length;
+    el.textContent = sel > 0 ? `選${sel}` : '';
+  }
+  updateSummary();
+}
+
+function updateSummary() {
+  const sel = ALL_PIECES.filter(p => quantities[p.id] > 0);
+  const totalMasu = sel.reduce((s, p) => s + p.cells.length * quantities[p.id], 0);
+  const bar = document.getElementById('summary-bar');
+  const btn = document.getElementById('solve-btn');
+  if (sel.length) {
+    bar.innerHTML = `<strong>${sel.length}</strong>種類 / 計<strong>${totalMasu}</strong>マス分を選択中`;
+    btn.disabled = false;
+  } else {
+    bar.textContent = 'ピースを選択してください';
+    btn.disabled = true;
+  }
+}
+
+function clearAll() {
+  ALL_PIECES.forEach(p => quantities[p.id] = 0);
+  renderPieceList();
+  buildRankFilters();
+}
+
+function doSolve() {
+  const btn = document.getElementById('solve-btn');
+  btn.disabled = true;
+  btn.textContent = '計算中...';
+  setTimeout(() => {
+    const inventory = [];
+    ALL_PIECES.forEach(p => { for (let i = 0; i < quantities[p.id]; i++) inventory.push(p); });
+
+    const board = Array(5).fill(null).map(() => Array(5).fill(-1));
+    let bestFilled = 0;
+    let bestSols = [];
+    const used = Array(inventory.length).fill(false);
+    let calls = 0;
+    const MAX = 300000;
+
+    function canPlace(r, c, cells) {
+      for (const [dr, dc] of cells) {
+        const nr = r+dr, nc = c+dc;
+        if (nr < 0 || nr >= 5 || nc < 0 || nc >= 5 || board[nr][nc] !== -1) return false;
+      }
+      return true;
+    }
+    function place(r, c, cells, idx) { for (const [dr, dc] of cells) board[r+dr][c+dc] = idx; }
+    function unplace(cells, r, c) { for (const [dr, dc] of cells) board[r+dr][c+dc] = -1; }
+    function countFilled() {
+      let n = 0;
+      for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) if (board[r][c] !== -1) n++;
+      return n;
+    }
+    function saveSol(filled) {
+      bestSols.push({ board: board.map(r => [...r]), filled, usedIdx: used.map((v,i) => v ? i : -1).filter(i => i >= 0) });
+    }
+
+    function search() {
+      if (calls++ > MAX) return;
+      const cur = countFilled();
+      if (cur > bestFilled) { bestFilled = cur; bestSols = []; }
+      if (cur === bestFilled && bestSols.length < 30) saveSol(cur);
+      if (cur === 25) return;
+      const seenId = new Set();
+      for (let pi = 0; pi < inventory.length; pi++) {
+        if (used[pi]) continue;
+        if (seenId.has(inventory[pi].id)) continue;
+        seenId.add(inventory[pi].id);
+        used[pi] = true;
+        for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
+          if (canPlace(r, c, inventory[pi].cells)) {
+            place(r, c, inventory[pi].cells, pi);
+            search();
+            unplace(inventory[pi].cells, r, c);
+            if (calls > MAX) { used[pi] = false; return; }
+          }
+        }
+        used[pi] = false;
+      }
+    }
+    search();
+
+    const seenBoards = new Set();
+    const unique = [];
+    for (const s of bestSols) {
+      const key = s.board.flat().map(i => i >= 0 ? inventory[i].id : '_').join(',');
+      if (!seenBoards.has(key)) { seenBoards.add(key); unique.push(s); }
+    }
+    solutions = unique;
+    renderResults(inventory);
+    btn.disabled = false;
+    btn.textContent = '攻略を計算する';
+  }, 20);
+}
+
+function renderResults(inventory) {
+  const cont = document.getElementById('result-area');
+  cont.innerHTML = '';
+  if (!solutions.length) {
+    cont.innerHTML = '<div class="no-result">解が見つかりませんでした。別のピースを試してください。</div>';
+    return;
+  }
+  const best = solutions[0];
+
+  const stats = document.createElement('div');
+  stats.className = 'result-stats';
+  [
+    { label: '最大充填マス', val: best.filled + ' / 25', perfect: best.filled === 25 },
+    { label: '充填率', val: Math.round(best.filled / 25 * 100) + '%', perfect: best.filled === 25 },
+    { label: 'パターン数', val: solutions.length + '件', perfect: false },
+  ].forEach(({ label, val, perfect }) => {
+    const card = document.createElement('div');
+    card.className = 'stat-card';
+    card.innerHTML = `<div class="stat-label">${label}</div><div class="stat-val${perfect?' perfect':''}">${val}</div>`;
+    stats.appendChild(card);
+  });
+  cont.appendChild(stats);
+
+  let idx = 0;
+  const navRow = document.createElement('div');
+  navRow.className = 'sol-nav';
+  const prevBtn = document.createElement('button'); prevBtn.className = 'nav-btn'; prevBtn.textContent = '← 前';
+  const nextBtn = document.createElement('button'); nextBtn.className = 'nav-btn'; nextBtn.textContent = '次 →';
+  const label = document.createElement('span'); label.className = 'sol-label';
+  navRow.appendChild(prevBtn); navRow.appendChild(label); navRow.appendChild(nextBtn);
+  cont.appendChild(navRow);
+
+  const boardWrap = document.createElement('div');
+  boardWrap.className = 'board-wrap';
+  const boardEl = document.createElement('div'); boardEl.className = 'board';
+  const legendWrap = document.createElement('div'); legendWrap.className = 'legend-wrap';
+  boardWrap.appendChild(boardEl); boardWrap.appendChild(legendWrap);
+  cont.appendChild(boardWrap);
+
+  function renderSol() {
+    boardEl.innerHTML = ''; legendWrap.innerHTML = '';
+    const sol = solutions[idx];
+    label.textContent = `パターン ${idx+1} / ${solutions.length}　(${sol.filled}/25マス)`;
+    prevBtn.disabled = idx === 0;
+    nextBtn.disabled = idx === solutions.length - 1;
+
+    const colorMap = {};
+    [...new Set(sol.usedIdx)].forEach((pi, i) => { colorMap[pi] = PIECE_COLORS[i % PIECE_COLORS.length]; });
+
+    for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
+      const cell = document.createElement('div');
+      cell.className = 'board-cell';
+      const pi = sol.board[r][c];
+      if (pi === -1) {
+        cell.classList.add('empty');
+      } else {
+        const col = colorMap[pi];
+        cell.style.cssText = `background:${col}33;color:${col};border-color:${col}66;`;
+        cell.textContent = inventory[pi].id;
+      }
+      boardEl.appendChild(cell);
+    }
+
+    legendWrap.innerHTML = '<div class="legend-title">使用ピース</div>';
+    [...new Set(sol.usedIdx)].forEach(pi => {
+      const col = colorMap[pi];
+      const p = inventory[pi];
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.style.background = col + '18';
+      const mini = drawMiniPiece(p.cells, col, 10);
+      const idEl = document.createElement('span');
+      idEl.className = 'legend-id'; idEl.style.color = col;
+      idEl.textContent = p.id;
+      const nmEl = document.createElement('span');
+      nmEl.className = 'legend-name';
+      nmEl.textContent = `${p.rank}ランク / ${p.cells.length}マス`;
+      item.appendChild(mini); item.appendChild(idEl); item.appendChild(nmEl);
+      legendWrap.appendChild(item);
+    });
+  }
+
+  prevBtn.onclick = () => { if (idx > 0) { idx--; renderSol(); } };
+  nextBtn.onclick = () => { if (idx < solutions.length - 1) { idx++; renderSol(); } };
+  renderSol();
+}
+
+buildRankFilters();
+renderPieceList();
+</script>
+</body>
+</html>
