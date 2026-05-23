@@ -2,168 +2,198 @@
 <html lang="ja">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <title>QB:LB パズル攻略ツール</title>
 <style>
-  :root {
-    --bg: #0f0f13;
-    --surface: #1a1a22;
-    --surface2: #222230;
-    --border: #2e2e40;
-    --border2: #3a3a52;
-    --text: #e8e8f0;
-    --text2: #8888aa;
-    --text3: #555570;
-    --cell: 48px;
-    --radius: 8px;
-    --radius-lg: 12px;
-  }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Hiragino Kaku Gothic ProN', 'Noto Sans JP', sans-serif; min-height: 100vh; }
+:root {
+  --bg: #0f0f13;
+  --surface: #1a1a22;
+  --surface2: #222230;
+  --border: #2e2e40;
+  --border2: #3a3a52;
+  --text: #e8e8f0;
+  --text2: #8888aa;
+  --text3: #44445a;
+  --radius: 8px;
+  --radius-lg: 12px;
+  /* ランク色 */
+  --ss-a: #a78bfa; --ss-b: #22d3ee;
+  --s-c:  #f87171;
+  --a-c:  #fb923c;
+  --b-c:  #c084fc;
+  --c-c:  #60a5fa;
+  --d-c:  #4ade80;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: 'Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif; font-size: 14px; }
 
-  header { border-bottom: 1px solid var(--border); padding: 1rem 1.5rem; display: flex; align-items: center; gap: 1rem; }
-  .logo { font-size: 18px; font-weight: 700; letter-spacing: .04em; }
-  .logo span { color: #a78bfa; }
-  .subtitle { font-size: 12px; color: var(--text2); }
+/* ===== ヘッダ ===== */
+header { padding: .75rem 1rem; border-bottom: 1px solid var(--border); display: flex; align-items: baseline; gap: .5rem; }
+.logo { font-size: 16px; font-weight: 700; }
+.logo em { font-style: normal; color: var(--ss-a); }
+.logo-sub { font-size: 11px; color: var(--text2); }
 
-  .main { display: grid; grid-template-columns: 340px 1fr; min-height: calc(100vh - 57px); }
+/* ===== メインレイアウト ===== */
+.page { display: flex; flex-direction: column; gap: 0; }
 
-  .sidebar { border-right: 1px solid var(--border); padding: 1.25rem; display: flex; flex-direction: column; gap: 1rem; overflow-y: auto; max-height: calc(100vh - 57px); }
-  .sidebar::-webkit-scrollbar { width: 4px; }
-  .sidebar::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+/* ===== 盤面プレビュー ===== */
+.board-section { padding: .75rem 1rem .5rem; }
+.board-section-label { font-size: 11px; color: var(--text2); margin-bottom: 6px; letter-spacing: .06em; }
+.board-preview { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0; width: 100%; aspect-ratio: 1; border: 1px solid var(--border2); border-radius: var(--radius); overflow: hidden; }
+.bp-cell { aspect-ratio: 1; border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; transition: background .15s; }
+.bp-cell:nth-child(5n) { border-right: none; }
+.bp-cell:nth-last-child(-n+5) { border-bottom: none; }
+.bp-cell.empty-cell { background: var(--surface2); }
 
-  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 1rem; }
-  .panel-title { font-size: 11px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--text2); margin-bottom: .75rem; }
+/* ===== セクション共通 ===== */
+.section { padding: .75rem 1rem; border-top: 1px solid var(--border); }
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.section-title { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text2); }
 
-  .rank-filters { display: flex; flex-direction: column; gap: 4px; }
-  .rank-filter-row { display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 6px 8px; border-radius: var(--radius); transition: background .15s; user-select: none; }
-  .rank-filter-row:hover { background: var(--surface2); }
-  .rank-cb { appearance: none; width: 16px; height: 16px; border-radius: 4px; cursor: pointer; flex-shrink: 0; position: relative; transition: all .15s; }
-  .rank-cb:checked::after { content: ''; position: absolute; left: 4px; top: 1px; width: 5px; height: 9px; border: 2px solid #fff; border-top: none; border-left: none; transform: rotate(45deg); }
-  .rank-badge { font-size: 13px; font-weight: 700; padding: 2px 10px; border-radius: 20px; min-width: 44px; text-align: center; }
-  .rank-info { font-size: 12px; color: var(--text2); flex: 1; }
-  .rank-sel-cnt { font-size: 11px; color: var(--text3); }
+/* ===== ランクフィルタ ===== */
+.rank-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.rank-check-item { display: flex; align-items: center; gap: 4px; cursor: pointer; }
+.rank-cb { appearance: none; width: 14px; height: 14px; border-radius: 3px; border: 1.5px solid var(--border2); cursor: pointer; flex-shrink: 0; position: relative; transition: all .15s; }
+.rank-cb:checked::after { content:''; position:absolute; left:3px; top:0px; width:5px; height:8px; border:2px solid #fff; border-top:none; border-left:none; transform:rotate(45deg); }
+.rank-badge { font-size: 12px; font-weight: 700; padding: 1px 7px; border-radius: 10px; }
+.rank-ctrl { display: flex; gap: 4px; margin-left: auto; }
+.mini-btn { padding: 3px 8px; font-size: 11px; border: 1px solid var(--border2); border-radius: 6px; background: transparent; color: var(--text2); cursor: pointer; }
+.mini-btn:hover { border-color: var(--text2); color: var(--text); }
 
-  .piece-list { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; max-height: 360px; overflow-y: auto; }
-  .piece-list::-webkit-scrollbar { width: 4px; }
-  .piece-list::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+/* ===== ピース選択グリッド ===== */
+.piece-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 5px; max-height: 260px; overflow-y: auto; }
+.piece-grid::-webkit-scrollbar { width: 3px; }
+.piece-grid::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.pcard { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 6px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; transition: border-color .15s; }
+.pcard:hover { border-color: var(--border2); }
+.pcard.on { border-width: 1.5px; background: #1c1c2e; }
+.pcard-id { font-size: 9px; color: var(--text2); }
 
-  .pcard { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 6px; display: flex; flex-direction: column; align-items: center; gap: 5px; cursor: pointer; transition: border-color .15s; }
-  .pcard:hover { border-color: var(--border2); }
-  .pcard.active { border-color: currentColor; background: #1e1e2e; }
-  .pcard-id { font-size: 10px; color: var(--text2); }
-  .qty-row { display: flex; align-items: center; gap: 3px; }
-  .qty-btn { width: 20px; height: 20px; background: var(--surface); border: 1px solid var(--border2); border-radius: 4px; color: var(--text); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .1s; line-height: 1; }
-  .qty-btn:hover { background: var(--border); }
-  .qty-val { font-size: 13px; font-weight: 700; min-width: 18px; text-align: center; color: var(--text); }
+/* ===== 選択済みピースエリア ===== */
+.selected-area { display: flex; flex-wrap: wrap; gap: 5px; min-height: 36px; }
+.sel-chip { display: flex; align-items: center; gap: 4px; padding: 4px 8px; border-radius: 20px; cursor: pointer; font-size: 12px; font-weight: 700; border: 1px solid transparent; transition: opacity .15s; user-select: none; }
+.sel-chip:hover { opacity: .75; }
+.sel-chip .chip-cnt { font-size: 11px; opacity: .8; }
+.empty-sel { font-size: 12px; color: var(--text3); padding: 6px 0; }
 
-  .solve-btn { width: 100%; padding: 12px; background: linear-gradient(135deg, #7c3aed, #06b6d4); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; letter-spacing: .05em; }
-  .solve-btn:hover { opacity: .85; }
-  .solve-btn:disabled { background: var(--surface2); color: var(--text2); cursor: not-allowed; opacity: 1; }
-  .clear-btn { width: 100%; padding: 8px; background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; cursor: pointer; transition: all .15s; }
-  .clear-btn:hover { border-color: var(--border2); color: var(--text); }
+/* ===== 計算ボタン ===== */
+.action-row { display: flex; gap: 8px; padding: .75rem 1rem; border-top: 1px solid var(--border); }
+.solve-btn { flex: 1; padding: 12px; background: linear-gradient(135deg,#7c3aed,#06b6d4); color: #fff; border: none; border-radius: var(--radius); font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity .15s; letter-spacing: .04em; }
+.solve-btn:hover { opacity: .85; }
+.solve-btn:disabled { background: var(--surface2); color: var(--text2); cursor: not-allowed; opacity: 1; }
+.clear-btn { padding: 12px 14px; background: transparent; color: var(--text2); border: 1px solid var(--border); border-radius: var(--radius); font-size: 13px; cursor: pointer; }
+.clear-btn:hover { border-color: var(--border2); color: var(--text); }
 
-  .summary-bar { font-size: 12px; color: var(--text2); text-align: center; }
-  .summary-bar strong { color: var(--text); }
+/* ===== 結果エリア ===== */
+.result-section { padding: .75rem 1rem; border-top: 1px solid var(--border); }
+.result-stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+.stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; }
+.stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text2); margin-bottom: 3px; }
+.stat-val { font-size: 20px; font-weight: 700; }
+.stat-val.perfect { background: linear-gradient(90deg,#7c3aed,#06b6d4); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
 
-  .result-area { padding: 1.5rem; overflow-y: auto; max-height: calc(100vh - 57px); }
-  .result-area::-webkit-scrollbar { width: 4px; }
-  .result-area::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+.sol-nav { display: flex; align-items: center; gap: 6px; margin-bottom: 10px; }
+.nav-btn { padding: 5px 12px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 12px; cursor: pointer; }
+.nav-btn:hover:not(:disabled) { border-color: var(--ss-a); color: var(--ss-a); }
+.nav-btn:disabled { opacity: .3; cursor: not-allowed; }
+.sol-label { font-size: 12px; color: var(--text2); }
 
-  .empty-state { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; gap: 1rem; color: var(--text3); font-size: 14px; padding: 4rem; text-align: center; min-height: 300px; }
+/* 結果盤面 */
+.result-board { display: grid; grid-template-columns: repeat(5,1fr); gap: 0; width: 100%; aspect-ratio: 1; border: 1px solid var(--border2); border-radius: var(--radius); overflow: hidden; }
+.rb-cell { aspect-ratio: 1; border-right: 1px solid rgba(0,0,0,.3); border-bottom: 1px solid rgba(0,0,0,.3); display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; }
+.rb-cell:nth-child(5n) { border-right: none; }
+.rb-cell:nth-last-child(-n+5) { border-bottom: none; }
+.rb-cell.empty-cell { background: var(--surface2); color: var(--text3); }
 
-  .result-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 1.5rem; }
-  .stat-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: .75rem 1rem; }
-  .stat-label { font-size: 10px; text-transform: uppercase; letter-spacing: .08em; color: var(--text2); margin-bottom: 4px; }
-  .stat-val { font-size: 22px; font-weight: 700; color: var(--text); }
-  .stat-val.perfect { background: linear-gradient(90deg,#7c3aed,#06b6d4); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+/* SSマーブル */
+@keyframes marble { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
+.ss-marble-text { background: linear-gradient(270deg,#7c3aed,#06b6d4,#a78bfa,#22d3ee); background-size:400% 400%; animation:marble 3s ease infinite; -webkit-background-clip:text; -webkit-text-fill-color:transparent; font-weight:700; }
+.ss-marble-bg { background: linear-gradient(270deg,#7c3aed55,#06b6d455,#a78bfa44,#22d3ee44); background-size:400% 400%; animation:marble 3s ease infinite; }
 
-  .sol-nav { display: flex; align-items: center; gap: 8px; margin-bottom: 1rem; }
-  .nav-btn { padding: 6px 14px; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); color: var(--text); font-size: 13px; cursor: pointer; transition: all .15s; }
-  .nav-btn:hover:not(:disabled) { border-color: #7c3aed; color: #a78bfa; }
-  .nav-btn:disabled { opacity: .3; cursor: not-allowed; }
-  .sol-label { font-size: 13px; color: var(--text2); }
-
-  .board-wrap { display: flex; gap: 2rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-  .board { display: grid; grid-template-columns: repeat(5, var(--cell)); gap: 3px; }
-  .board-cell { width: var(--cell); height: var(--cell); border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 10px; font-weight: 700; border: 1px solid transparent; }
-  .board-cell.empty { background: var(--surface2); border-color: var(--border); color: var(--text3); }
-
-  .legend-wrap { display: flex; flex-direction: column; gap: 6px; min-width: 160px; }
-  .legend-title { font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--text2); margin-bottom: 2px; }
-  .legend-item { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: var(--radius); }
-  .legend-id { font-size: 11px; font-weight: 700; min-width: 32px; }
-  .legend-name { font-size: 11px; color: var(--text2); }
-
-  .no-result { color: var(--text2); font-size: 14px; padding: 2rem; text-align: center; }
-
-  /* SSランク マーブルアニメ */
-  @keyframes marble { 0%{background-position:0% 50%} 50%{background-position:100% 50%} 100%{background-position:0% 50%} }
-  .ss-marble { background: linear-gradient(270deg,#7c3aed,#06b6d4,#a78bfa,#22d3ee); background-size: 400% 400%; animation: marble 4s ease infinite; -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-weight: 700; }
-
-  @media (max-width: 700px) {
-    .main { grid-template-columns: 1fr; }
-    .sidebar { max-height: none; border-right: none; border-bottom: 1px solid var(--border); }
-    .result-area { max-height: none; }
-  }
+.no-result { color: var(--text2); font-size: 13px; padding: 1rem 0; }
 </style>
 </head>
 <body>
+
 <header>
-  <div>
-    <div class="logo">QB<span>:LB</span> パズル攻略ツール</div>
-    <div class="subtitle">Queen's Blade Limit Break — サードパーティツール / SS:107種類対応</div>
-  </div>
+  <div class="logo">QB<em>:LB</em> パズル攻略ツール</div>
+  <div class="logo-sub">サードパーティツール</div>
 </header>
 
-<div class="main">
-  <div class="sidebar">
-    <div class="panel">
-      <div class="panel-title">表示するランク</div>
-      <div class="rank-filters" id="rank-filters"></div>
-    </div>
-    <div class="panel">
-      <div class="panel-title">ピース選択</div>
-      <div class="piece-list" id="piece-list"></div>
-    </div>
-    <div class="summary-bar" id="summary-bar">ピースを選択してください</div>
-    <button class="solve-btn" id="solve-btn" onclick="doSolve()" disabled>攻略を計算する</button>
-    <button class="clear-btn" onclick="clearAll()">全リセット</button>
+<div class="page">
+
+  <!-- 盤面プレビュー -->
+  <div class="board-section">
+    <div class="board-section-label">BOARD PREVIEW</div>
+    <div class="board-preview" id="board-preview"></div>
   </div>
 
-  <div class="result-area" id="result-area">
-    <div class="empty-state">
-      <div style="font-size:48px;opacity:.2;">🧩</div>
-      <div>左のパネルでピースを選択して<br>「攻略を計算する」を押してください</div>
+  <!-- ランクフィルタ -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">表示ランク</div>
+      <div class="rank-ctrl">
+        <button class="mini-btn" onclick="setAllRanks(true)">全選択</button>
+        <button class="mini-btn" onclick="setAllRanks(false)">全解除</button>
+      </div>
+    </div>
+    <div class="rank-row" id="rank-row"></div>
+  </div>
+
+  <!-- ピース選択 -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">ピース選択</div>
+    </div>
+    <div class="piece-grid" id="piece-grid"></div>
+  </div>
+
+  <!-- 選択済みピース -->
+  <div class="section">
+    <div class="section-header">
+      <div class="section-title">選択中のピース <span id="sel-summary" style="font-weight:400;color:var(--text2);"></span></div>
+    </div>
+    <div class="selected-area" id="selected-area">
+      <div class="empty-sel">ピースを選択すると表示されます</div>
     </div>
   </div>
+
+  <!-- アクションボタン -->
+  <div class="action-row">
+    <button class="solve-btn" id="solve-btn" onclick="doSolve()" disabled>攻略を計算する</button>
+    <button class="clear-btn" onclick="clearAll()">リセット</button>
+  </div>
+
+  <!-- 結果 -->
+  <div class="result-section" id="result-section" style="display:none;">
+    <div class="result-stats" id="result-stats"></div>
+    <div class="sol-nav" id="sol-nav"></div>
+    <div class="result-board" id="result-board"></div>
+  </div>
+
 </div>
 
 <script>
-// ランク色設定: D緑 C青 B紫 A橙 S赤 SS紫&水色マーブル
+const RANKS = ['SS','S','A','B','C','D'];
 const RANK_META = {
-  SS: { color: '#a78bfa', color2: '#22d3ee', bg: '#1e1535', border: '#6d28d9', label: 'SS', size: 1, marble: true },
-  S:  { color: '#f87171', bg: '#2d1515', border: '#dc2626', label: 'S',  size: 2 },
-  A:  { color: '#fb923c', bg: '#2d1a0a', border: '#ea580c', label: 'A',  size: 3 },
-  B:  { color: '#c084fc', bg: '#1e1535', border: '#9333ea', label: 'B',  size: 4 },
-  C:  { color: '#60a5fa', bg: '#0f1f38', border: '#2563eb', label: 'C',  size: 5 },
-  D:  { color: '#4ade80', bg: '#0d2a18', border: '#16a34a', label: 'D',  size: 6 },
+  SS: { color:'#a78bfa', color2:'#22d3ee', bg:'#2d1f5e', border:'#7c3aed', pt:128, marble:true },
+  S:  { color:'#f87171', bg:'#3d1515', border:'#dc2626', pt:64 },
+  A:  { color:'#fb923c', bg:'#3d220a', border:'#ea580c', pt:32 },
+  B:  { color:'#c084fc', bg:'#2a1a50', border:'#9333ea', pt:16 },
+  C:  { color:'#60a5fa', bg:'#0f2040', border:'#2563eb', pt:8  },
+  D:  { color:'#4ade80', bg:'#0d2a18', border:'#16a34a', pt:4  },
 };
 
-// 全107種類（Pythonで検証済み・連結・重複なし）
 const ALL_PIECES = [
   {rank:'SS',id:'SS1',cells:[[0,0]]},
-
   {rank:'S',id:'S1',cells:[[0,0],[0,1]]},
   {rank:'S',id:'S2',cells:[[0,0],[1,0]]},
-
   {rank:'A',id:'A1',cells:[[0,0],[0,1],[0,2]]},
   {rank:'A',id:'A2',cells:[[0,0],[0,1],[1,0]]},
   {rank:'A',id:'A3',cells:[[0,0],[0,1],[1,1]]},
   {rank:'A',id:'A4',cells:[[0,0],[1,0],[1,1]]},
   {rank:'A',id:'A5',cells:[[0,0],[1,0],[2,0]]},
   {rank:'A',id:'A6',cells:[[0,1],[1,0],[1,1]]},
-
   {rank:'B',id:'B1', cells:[[0,0],[0,1],[0,2],[1,0]]},
   {rank:'B',id:'B2', cells:[[0,0],[0,1],[0,2],[1,1]]},
   {rank:'B',id:'B3', cells:[[0,0],[0,1],[0,2],[1,2]]},
@@ -181,8 +211,6 @@ const ALL_PIECES = [
   {rank:'B',id:'B15',cells:[[0,1],[1,0],[1,1],[2,1]]},
   {rank:'B',id:'B16',cells:[[0,1],[1,1],[2,0],[2,1]]},
   {rank:'B',id:'B17',cells:[[0,2],[1,0],[1,1],[1,2]]},
-
-  // Cランク: 35種類（C31・C36の飛び地を除外）
   {rank:'C',id:'C1', cells:[[0,0],[0,1],[0,2],[1,0],[1,1]]},
   {rank:'C',id:'C2', cells:[[0,0],[0,1],[0,2],[1,0],[1,2]]},
   {rank:'C',id:'C3', cells:[[0,0],[0,1],[0,2],[1,0],[2,0]]},
@@ -213,16 +241,13 @@ const ALL_PIECES = [
   {rank:'C',id:'C28',cells:[[0,1],[1,0],[1,1],[1,2],[2,2]]},
   {rank:'C',id:'C29',cells:[[0,1],[1,0],[1,1],[2,0],[2,1]]},
   {rank:'C',id:'C30',cells:[[0,1],[1,0],[1,1],[2,1],[2,2]]},
-  {rank:'C',id:'C31',cells:[[0,1],[1,1],[1,2],[2,0],[2,1]]},  // 旧C31(飛び地)を削除→旧C32に繰り上げ
+  {rank:'C',id:'C31',cells:[[0,1],[1,1],[1,2],[2,0],[2,1]]},
   {rank:'C',id:'C32',cells:[[0,1],[1,1],[2,0],[2,1],[2,2]]},
   {rank:'C',id:'C33',cells:[[0,2],[1,0],[1,1],[1,2],[2,0]]},
   {rank:'C',id:'C34',cells:[[0,2],[1,0],[1,1],[1,2],[2,1]]},
   {rank:'C',id:'C35',cells:[[0,2],[1,0],[1,1],[1,2],[2,2]]},
-  // 旧C36(飛び地=旧C31と同一)を削除
-  // 旧C37
   {rank:'C',id:'C36',cells:[[0,2],[1,1],[1,2],[2,0],[2,1]]},
   {rank:'C',id:'C37',cells:[[0,2],[1,2],[2,0],[2,1],[2,2]]},
-
   {rank:'D',id:'D1', cells:[[0,0],[0,1],[0,2],[1,0],[1,1],[1,2]]},
   {rank:'D',id:'D2', cells:[[0,0],[0,1],[0,2],[1,0],[1,1],[2,0]]},
   {rank:'D',id:'D3', cells:[[0,0],[0,1],[0,2],[1,0],[1,1],[2,1]]},
@@ -271,330 +296,388 @@ const ALL_PIECES = [
   {rank:'D',id:'D46',cells:[[0,2],[1,1],[1,2],[2,0],[2,1],[2,2]]},
 ];
 
-const PIECE_COLORS = [
-  '#818cf8','#34d399','#fb923c','#e879f9','#38bdf8',
-  '#facc15','#f87171','#a78bfa','#4ade80','#fb7185',
-  '#fbbf24','#60a5fa','#2dd4bf','#c084fc'
-];
+const RANK_ORDER = {SS:0,S:1,A:2,B:3,C:4,D:5};
 
-const RANKS = ['SS','S','A','B','C','D'];
 let visibleRanks = new Set(RANKS);
 let quantities = {};
 ALL_PIECES.forEach(p => quantities[p.id] = 0);
 let solutions = [];
 
-function buildRankFilters() {
-  const cont = document.getElementById('rank-filters');
+// ===== 盤面プレビュー =====
+function buildBoardPreview() {
+  const el = document.getElementById('board-preview');
+  el.innerHTML = '';
+  for (let i = 0; i < 25; i++) {
+    const c = document.createElement('div');
+    c.className = 'bp-cell empty-cell';
+    c.id = 'bp-' + i;
+    el.appendChild(c);
+  }
+}
+
+function updateBoardPreview(board, inventory, colorMap) {
+  for (let i = 0; i < 25; i++) {
+    const el = document.getElementById('bp-' + i);
+    if (!el) continue;
+    const r = Math.floor(i / 5), c = i % 5;
+    if (!board) { el.className = 'bp-cell empty-cell'; el.style.background = ''; el.style.color = ''; el.textContent = ''; return; }
+    const pi = board[r][c];
+    if (pi === -1) {
+      el.className = 'bp-cell empty-cell'; el.style.background = ''; el.style.color = ''; el.textContent = '';
+    } else {
+      const col = colorMap[pi];
+      el.className = 'bp-cell';
+      el.style.background = col + '44';
+      el.style.color = col;
+      el.textContent = inventory[pi].id;
+    }
+  }
+}
+
+// ===== ランクフィルタ =====
+function buildRankRow() {
+  const cont = document.getElementById('rank-row');
   cont.innerHTML = '';
   RANKS.forEach(r => {
     const m = RANK_META[r];
-    const row = document.createElement('label');
-    row.className = 'rank-filter-row';
+    const item = document.createElement('label');
+    item.className = 'rank-check-item';
 
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.className = 'rank-cb';
     cb.checked = visibleRanks.has(r);
-    cb.style.cssText = `border: 1.5px solid ${m.border}; background: ${cb.checked ? m.border : 'transparent'};`;
+    cb.style.cssText = `border-color:${m.border};background:${cb.checked ? m.border : 'transparent'};`;
     cb.onchange = () => {
       cb.style.background = cb.checked ? m.border : 'transparent';
       if (cb.checked) visibleRanks.add(r); else visibleRanks.delete(r);
-      renderPieceList();
+      renderPieceGrid();
     };
 
     const badge = document.createElement('span');
     badge.className = 'rank-badge';
     if (m.marble) {
-      badge.innerHTML = `<span class="ss-marble">SS</span>`;
-      badge.style.cssText = `background:${m.bg};border:1px solid ${m.border};`;
+      badge.style.cssText = `background:${m.bg};border:1px solid ${m.border};padding:1px 7px;`;
+      badge.innerHTML = `<span class="ss-marble-text">SS</span>`;
     } else {
       badge.textContent = r;
       badge.style.cssText = `background:${m.bg};color:${m.color};border:1px solid ${m.border};`;
     }
 
-    const info = document.createElement('span');
-    info.className = 'rank-info';
-    const total = ALL_PIECES.filter(p => p.rank === r).length;
-    const sel = ALL_PIECES.filter(p => p.rank === r && quantities[p.id] > 0).length;
-    info.textContent = `${m.size}マス / ${total}種`;
-
-    const cnt = document.createElement('span');
-    cnt.className = 'rank-sel-cnt';
-    cnt.id = 'rcnt-' + r;
-    cnt.textContent = sel > 0 ? `選${sel}` : '';
-
-    row.appendChild(cb); row.appendChild(badge); row.appendChild(info); row.appendChild(cnt);
-    cont.appendChild(row);
+    item.appendChild(cb); item.appendChild(badge);
+    cont.appendChild(item);
   });
 }
 
-function drawMiniPiece(cells, color, sz) {
+function setAllRanks(val) {
+  RANKS.forEach(r => { if (val) visibleRanks.add(r); else visibleRanks.delete(r); });
+  buildRankRow();
+  renderPieceGrid();
+}
+
+// ===== ミニピース描画 =====
+function drawMini(cells, color, sz) {
   const maxR = Math.max(...cells.map(c => c[0]));
   const maxC = Math.max(...cells.map(c => c[1]));
   const wrap = document.createElement('div');
   wrap.style.cssText = `display:inline-grid;grid-template-columns:repeat(${maxC+1},${sz}px);gap:1px;`;
   for (let r = 0; r <= maxR; r++) for (let c = 0; c <= maxC; c++) {
     const cell = document.createElement('div');
-    const filled = cells.some(([pr, pc]) => pr === r && pc === c);
-    cell.style.cssText = `width:${sz}px;height:${sz}px;border-radius:2px;background:${filled ? color + '55' : 'transparent'};border:1px solid ${filled ? color + '99' : 'transparent'};`;
+    const filled = cells.some(([pr,pc]) => pr===r && pc===c);
+    cell.style.cssText = `width:${sz}px;height:${sz}px;border-radius:1px;background:${filled ? color+'66' : 'transparent'};border:1px solid ${filled ? color+'aa' : 'transparent'};`;
     wrap.appendChild(cell);
   }
   return wrap;
 }
 
-function renderPieceList() {
-  const cont = document.getElementById('piece-list');
+// ===== ピース選択グリッド =====
+function renderPieceGrid() {
+  const cont = document.getElementById('piece-grid');
   cont.innerHTML = '';
-  const visible = ALL_PIECES.filter(p => visibleRanks.has(p.rank));
-  visible.forEach(p => {
+  ALL_PIECES.filter(p => visibleRanks.has(p.rank)).forEach(p => {
     const m = RANK_META[p.rank];
     const card = document.createElement('div');
-    card.className = 'pcard' + (quantities[p.id] > 0 ? ' active' : '');
+    card.className = 'pcard' + (quantities[p.id] > 0 ? ' on' : '');
     card.id = 'pc-' + p.id;
-    card.style.color = m.color;
     if (quantities[p.id] > 0) card.style.borderColor = m.border;
 
-    card.appendChild(drawMiniPiece(p.cells, m.color, 14));
-
+    if (m.marble) {
+      const mini = drawMini(p.cells, m.color, 12);
+      // SSはグラデーション枠
+      card.appendChild(mini);
+    } else {
+      card.appendChild(drawMini(p.cells, m.color, 12));
+    }
     const idEl = document.createElement('div');
     idEl.className = 'pcard-id';
     idEl.style.color = quantities[p.id] > 0 ? m.color : '';
     idEl.textContent = p.id;
     card.appendChild(idEl);
 
-    const qRow = document.createElement('div');
-    qRow.className = 'qty-row';
-    const minus = document.createElement('button');
-    minus.className = 'qty-btn';
-    minus.textContent = '−';
-    minus.onclick = e => { e.stopPropagation(); if (quantities[p.id] > 0) { quantities[p.id]--; refreshCard(p); } };
-    const valEl = document.createElement('span');
-    valEl.className = 'qty-val';
-    valEl.id = 'qv-' + p.id;
-    valEl.textContent = quantities[p.id];
-    const plus = document.createElement('button');
-    plus.className = 'qty-btn';
-    plus.textContent = '+';
-    plus.onclick = e => { e.stopPropagation(); if (quantities[p.id] < 9) { quantities[p.id]++; refreshCard(p); } };
-    qRow.appendChild(minus); qRow.appendChild(valEl); qRow.appendChild(plus);
-    card.appendChild(qRow);
-
     card.onclick = () => {
-      quantities[p.id] = quantities[p.id] > 0 ? 0 : 1;
-      refreshCard(p);
+      quantities[p.id] = quantities[p.id] > 0 ? quantities[p.id] + 1 : 1;
+      if (quantities[p.id] > 9) quantities[p.id] = 0;
+      refreshPieceCard(p);
+      renderSelectedArea();
+      updateSummary();
     };
     cont.appendChild(card);
   });
-  updateSummary();
-  // ランクフィルタの選択数更新
-  RANKS.forEach(r => {
-    const el = document.getElementById('rcnt-' + r);
-    if (el) {
-      const sel = ALL_PIECES.filter(p => p.rank === r && quantities[p.id] > 0).length;
-      el.textContent = sel > 0 ? `選${sel}` : '';
-    }
-  });
 }
 
-function refreshCard(p) {
+function refreshPieceCard(p) {
   const m = RANK_META[p.rank];
   const card = document.getElementById('pc-' + p.id);
   if (!card) return;
-  const valEl = document.getElementById('qv-' + p.id);
-  if (valEl) valEl.textContent = quantities[p.id];
-  const active = quantities[p.id] > 0;
-  card.classList.toggle('active', active);
-  card.style.borderColor = active ? m.border : '';
+  const on = quantities[p.id] > 0;
+  card.classList.toggle('on', on);
+  card.style.borderColor = on ? m.border : '';
   const idEl = card.querySelector('.pcard-id');
-  if (idEl) idEl.style.color = active ? m.color : '';
-  const el = document.getElementById('rcnt-' + p.rank);
-  if (el) {
-    const sel = ALL_PIECES.filter(q => q.rank === p.rank && quantities[q.id] > 0).length;
-    el.textContent = sel > 0 ? `選${sel}` : '';
+  if (idEl) idEl.style.color = on ? m.color : '';
+}
+
+// ===== 選択済みエリア =====
+function renderSelectedArea() {
+  const cont = document.getElementById('selected-area');
+  cont.innerHTML = '';
+  // ランク高い順（SS→D）でソート
+  const selected = ALL_PIECES
+    .filter(p => quantities[p.id] > 0)
+    .sort((a, b) => RANK_ORDER[a.rank] - RANK_ORDER[b.rank]);
+
+  if (!selected.length) {
+    cont.innerHTML = '<div class="empty-sel">ピースを選択すると表示されます</div>';
+    return;
   }
-  updateSummary();
+  selected.forEach(p => {
+    const m = RANK_META[p.rank];
+    const chip = document.createElement('div');
+    chip.className = 'sel-chip';
+    chip.style.cssText = `background:${m.bg};border-color:${m.border};color:${m.color};`;
+
+    if (m.marble) {
+      const lbl = document.createElement('span');
+      lbl.className = 'ss-marble-text';
+      lbl.textContent = p.id;
+      chip.appendChild(lbl);
+    } else {
+      chip.appendChild(document.createTextNode(p.id));
+    }
+
+    const cnt = document.createElement('span');
+    cnt.className = 'chip-cnt';
+    cnt.textContent = `×${quantities[p.id]}`;
+    chip.appendChild(cnt);
+
+    // タップで所持数-1
+    chip.onclick = () => {
+      if (quantities[p.id] > 0) quantities[p.id]--;
+      refreshPieceCard(p);
+      renderSelectedArea();
+      updateSummary();
+    };
+    cont.appendChild(chip);
+  });
 }
 
 function updateSummary() {
   const sel = ALL_PIECES.filter(p => quantities[p.id] > 0);
-  const totalMasu = sel.reduce((s, p) => s + p.cells.length * quantities[p.id], 0);
-  const bar = document.getElementById('summary-bar');
+  const total = sel.reduce((s, p) => s + quantities[p.id], 0);
+  const masu = sel.reduce((s, p) => s + p.cells.length * quantities[p.id], 0);
+  const el = document.getElementById('sel-summary');
   const btn = document.getElementById('solve-btn');
   if (sel.length) {
-    bar.innerHTML = `<strong>${sel.length}</strong>種類 / 計<strong>${totalMasu}</strong>マス分を選択中`;
+    el.textContent = `(${sel.length}種 / 計${total}枚 / ${masu}マス)`;
     btn.disabled = false;
   } else {
-    bar.textContent = 'ピースを選択してください';
+    el.textContent = '';
     btn.disabled = true;
   }
 }
 
 function clearAll() {
   ALL_PIECES.forEach(p => quantities[p.id] = 0);
-  renderPieceList();
-  buildRankFilters();
+  renderPieceGrid();
+  renderSelectedArea();
+  updateSummary();
+  document.getElementById('result-section').style.display = 'none';
+  buildBoardPreview();
 }
 
+// ===== ソルバー =====
 function doSolve() {
   const btn = document.getElementById('solve-btn');
-  btn.disabled = true;
-  btn.textContent = '計算中...';
+  btn.disabled = true; btn.textContent = '計算中...';
   setTimeout(() => {
     const inventory = [];
     ALL_PIECES.forEach(p => { for (let i = 0; i < quantities[p.id]; i++) inventory.push(p); });
 
     const board = Array(5).fill(null).map(() => Array(5).fill(-1));
-    let bestFilled = 0;
-    let bestSols = [];
+    let bestFilled = 0, bestSols = [];
     const used = Array(inventory.length).fill(false);
     let calls = 0;
     const MAX = 300000;
 
     function canPlace(r, c, cells) {
-      for (const [dr, dc] of cells) {
-        const nr = r+dr, nc = c+dc;
-        if (nr < 0 || nr >= 5 || nc < 0 || nc >= 5 || board[nr][nc] !== -1) return false;
+      for (const [dr,dc] of cells) {
+        const nr=r+dr, nc=c+dc;
+        if (nr<0||nr>=5||nc<0||nc>=5||board[nr][nc]!==-1) return false;
       }
       return true;
     }
-    function place(r, c, cells, idx) { for (const [dr, dc] of cells) board[r+dr][c+dc] = idx; }
-    function unplace(cells, r, c) { for (const [dr, dc] of cells) board[r+dr][c+dc] = -1; }
-    function countFilled() {
-      let n = 0;
-      for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) if (board[r][c] !== -1) n++;
-      return n;
-    }
-    function saveSol(filled) {
-      bestSols.push({ board: board.map(r => [...r]), filled, usedIdx: used.map((v,i) => v ? i : -1).filter(i => i >= 0) });
-    }
+    function place(r,c,cells,idx){ for(const [dr,dc] of cells) board[r+dr][c+dc]=idx; }
+    function unplace(cells,r,c){ for(const [dr,dc] of cells) board[r+dr][c+dc]=-1; }
+    function countFilled(){ let n=0; for(let r=0;r<5;r++) for(let c=0;c<5;c++) if(board[r][c]!==-1)n++; return n; }
+    function saveSol(f){ bestSols.push({board:board.map(r=>[...r]),filled:f,usedIdx:used.map((v,i)=>v?i:-1).filter(i=>i>=0)}); }
 
-    function search() {
-      if (calls++ > MAX) return;
-      const cur = countFilled();
-      if (cur > bestFilled) { bestFilled = cur; bestSols = []; }
-      if (cur === bestFilled && bestSols.length < 30) saveSol(cur);
-      if (cur === 25) return;
-      const seenId = new Set();
-      for (let pi = 0; pi < inventory.length; pi++) {
-        if (used[pi]) continue;
-        if (seenId.has(inventory[pi].id)) continue;
-        seenId.add(inventory[pi].id);
-        used[pi] = true;
-        for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
-          if (canPlace(r, c, inventory[pi].cells)) {
-            place(r, c, inventory[pi].cells, pi);
+    function search(){
+      if(calls++>MAX) return;
+      const cur=countFilled();
+      if(cur>bestFilled){bestFilled=cur;bestSols=[];}
+      if(cur===bestFilled&&bestSols.length<30) saveSol(cur);
+      if(cur===25) return;
+      const seen=new Set();
+      for(let pi=0;pi<inventory.length;pi++){
+        if(used[pi]) continue;
+        if(seen.has(inventory[pi].id)) continue;
+        seen.add(inventory[pi].id);
+        used[pi]=true;
+        for(let r=0;r<5;r++) for(let c=0;c<5;c++){
+          if(canPlace(r,c,inventory[pi].cells)){
+            place(r,c,inventory[pi].cells,pi);
             search();
-            unplace(inventory[pi].cells, r, c);
-            if (calls > MAX) { used[pi] = false; return; }
+            unplace(inventory[pi].cells,r,c);
+            if(calls>MAX){used[pi]=false;return;}
           }
         }
-        used[pi] = false;
+        used[pi]=false;
       }
     }
     search();
 
-    const seenBoards = new Set();
-    const unique = [];
-    for (const s of bestSols) {
-      const key = s.board.flat().map(i => i >= 0 ? inventory[i].id : '_').join(',');
-      if (!seenBoards.has(key)) { seenBoards.add(key); unique.push(s); }
+    const seenB=new Set(), unique=[];
+    for(const s of bestSols){
+      const key=s.board.flat().map(i=>i>=0?inventory[i].id:'_').join(',');
+      if(!seenB.has(key)){seenB.add(key);unique.push(s);}
     }
-    solutions = unique;
+    solutions=unique;
     renderResults(inventory);
-    btn.disabled = false;
-    btn.textContent = '攻略を計算する';
+    btn.disabled=false; btn.textContent='攻略を計算する';
   }, 20);
 }
 
+// ===== 結果描画 =====
+function rankColor(rank) {
+  return RANK_META[rank].color;
+}
+
 function renderResults(inventory) {
-  const cont = document.getElementById('result-area');
-  cont.innerHTML = '';
+  const sec = document.getElementById('result-section');
+  sec.style.display = '';
+
   if (!solutions.length) {
-    cont.innerHTML = '<div class="no-result">解が見つかりませんでした。別のピースを試してください。</div>';
+    sec.innerHTML = '<div class="no-result">解が見つかりませんでした。別のピースを試してください。</div>';
     return;
   }
-  const best = solutions[0];
 
-  const stats = document.createElement('div');
-  stats.className = 'result-stats';
-  [
-    { label: '最大充填マス', val: best.filled + ' / 25', perfect: best.filled === 25 },
-    { label: '充填率', val: Math.round(best.filled / 25 * 100) + '%', perfect: best.filled === 25 },
-    { label: 'パターン数', val: solutions.length + '件', perfect: false },
-  ].forEach(({ label, val, perfect }) => {
-    const card = document.createElement('div');
-    card.className = 'stat-card';
-    card.innerHTML = `<div class="stat-label">${label}</div><div class="stat-val${perfect?' perfect':''}">${val}</div>`;
-    stats.appendChild(card);
-  });
-  cont.appendChild(stats);
+  // 色マップ：ピースのランクに対応した色を使う
+  function makeColorMap(sol) {
+    const map = {};
+    [...new Set(sol.usedIdx)].forEach(pi => { map[pi] = rankColor(inventory[pi].rank); });
+    return map;
+  }
+
+  // pt計算
+  function calcPt(sol) {
+    const usedPieces = [...new Set(sol.usedIdx)].map(pi => inventory[pi]);
+    return usedPieces.reduce((s, p) => s + RANK_META[p.rank].pt, 0);
+  }
+
+  sec.innerHTML = '';
+
+  // stats
+  const statsEl = document.createElement('div');
+  statsEl.className = 'result-stats';
+  sec.appendChild(statsEl);
+
+  // nav
+  const navEl = document.createElement('div');
+  navEl.className = 'sol-nav';
+  sec.appendChild(navEl);
+
+  // board (5×5)
+  const boardEl = document.createElement('div');
+  boardEl.className = 'result-board';
+  sec.appendChild(boardEl);
 
   let idx = 0;
-  const navRow = document.createElement('div');
-  navRow.className = 'sol-nav';
-  const prevBtn = document.createElement('button'); prevBtn.className = 'nav-btn'; prevBtn.textContent = '← 前';
-  const nextBtn = document.createElement('button'); nextBtn.className = 'nav-btn'; nextBtn.textContent = '次 →';
-  const label = document.createElement('span'); label.className = 'sol-label';
-  navRow.appendChild(prevBtn); navRow.appendChild(label); navRow.appendChild(nextBtn);
-  cont.appendChild(navRow);
-
-  const boardWrap = document.createElement('div');
-  boardWrap.className = 'board-wrap';
-  const boardEl = document.createElement('div'); boardEl.className = 'board';
-  const legendWrap = document.createElement('div'); legendWrap.className = 'legend-wrap';
-  boardWrap.appendChild(boardEl); boardWrap.appendChild(legendWrap);
-  cont.appendChild(boardWrap);
 
   function renderSol() {
-    boardEl.innerHTML = ''; legendWrap.innerHTML = '';
     const sol = solutions[idx];
-    label.textContent = `パターン ${idx+1} / ${solutions.length}　(${sol.filled}/25マス)`;
-    prevBtn.disabled = idx === 0;
-    nextBtn.disabled = idx === solutions.length - 1;
+    const colorMap = makeColorMap(sol);
+    const pt = calcPt(sol);
 
-    const colorMap = {};
-    [...new Set(sol.usedIdx)].forEach((pi, i) => { colorMap[pi] = PIECE_COLORS[i % PIECE_COLORS.length]; });
+    // stats
+    statsEl.innerHTML = '';
+    [
+      { label:'充填マス', val:`${sol.filled}/25`, perfect: sol.filled===25 },
+      { label:'現在のpt', val:`${pt}`, perfect: sol.filled===25 },
+      { label:'パターン', val:`${idx+1}/${solutions.length}`, perfect: false },
+    ].forEach(({label,val,perfect}) => {
+      const c = document.createElement('div');
+      c.className = 'stat-card';
+      c.innerHTML = `<div class="stat-label">${label}</div><div class="stat-val${perfect?' perfect':''}">${val}</div>`;
+      statsEl.appendChild(c);
+    });
 
-    for (let r = 0; r < 5; r++) for (let c = 0; c < 5; c++) {
+    // nav
+    navEl.innerHTML = '';
+    const prev = document.createElement('button'); prev.className='nav-btn'; prev.textContent='← 前';
+    prev.disabled = idx===0;
+    prev.onclick = () => { if(idx>0){idx--;renderSol();} };
+    const lbl = document.createElement('span'); lbl.className='sol-label';
+    lbl.textContent = `${sol.filled}マス / ${pt}pt`;
+    const next = document.createElement('button'); next.className='nav-btn'; next.textContent='次 →';
+    next.disabled = idx===solutions.length-1;
+    next.onclick = () => { if(idx<solutions.length-1){idx++;renderSol();} };
+    navEl.appendChild(prev); navEl.appendChild(lbl); navEl.appendChild(next);
+
+    // board
+    boardEl.innerHTML = '';
+    for (let r=0;r<5;r++) for (let c=0;c<5;c++) {
       const cell = document.createElement('div');
-      cell.className = 'board-cell';
+      cell.className = 'rb-cell';
       const pi = sol.board[r][c];
-      if (pi === -1) {
-        cell.classList.add('empty');
+      if (pi===-1) {
+        cell.classList.add('empty-cell');
       } else {
         const col = colorMap[pi];
-        cell.style.cssText = `background:${col}33;color:${col};border-color:${col}66;`;
-        cell.textContent = inventory[pi].id;
+        const p = inventory[pi];
+        if (RANK_META[p.rank].marble) {
+          cell.classList.add('ss-marble-bg');
+          cell.style.color = '#fff';
+        } else {
+          cell.style.background = col + '55';
+          cell.style.color = col;
+        }
+        cell.textContent = p.id;
       }
       boardEl.appendChild(cell);
     }
 
-    legendWrap.innerHTML = '<div class="legend-title">使用ピース</div>';
-    [...new Set(sol.usedIdx)].forEach(pi => {
-      const col = colorMap[pi];
-      const p = inventory[pi];
-      const item = document.createElement('div');
-      item.className = 'legend-item';
-      item.style.background = col + '18';
-      const mini = drawMiniPiece(p.cells, col, 10);
-      const idEl = document.createElement('span');
-      idEl.className = 'legend-id'; idEl.style.color = col;
-      idEl.textContent = p.id;
-      const nmEl = document.createElement('span');
-      nmEl.className = 'legend-name';
-      nmEl.textContent = `${p.rank}ランク / ${p.cells.length}マス`;
-      item.appendChild(mini); item.appendChild(idEl); item.appendChild(nmEl);
-      legendWrap.appendChild(item);
-    });
+    // 盤面プレビューも更新
+    updateBoardPreview(sol.board, inventory, colorMap);
   }
 
-  prevBtn.onclick = () => { if (idx > 0) { idx--; renderSol(); } };
-  nextBtn.onclick = () => { if (idx < solutions.length - 1) { idx++; renderSol(); } };
   renderSol();
 }
 
-buildRankFilters();
-renderPieceList();
+// ===== 初期化 =====
+buildBoardPreview();
+buildRankRow();
+renderPieceGrid();
+renderSelectedArea();
+updateSummary();
 </script>
 </body>
 </html>
